@@ -1,17 +1,10 @@
 @import "tailwindcss";
 
 * {
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
   text-rendering: geometricPrecision;
   font-smoothing: antialiased;
   -webkit-font-smoothing: antialiased;
-  color: #192229;
-  font-family: "Geist", sans-serif;
-  font-optical-sizing: auto;
-  font-style: normal;
-  color: #ffffff;
 }
 
 /* :root {
@@ -35,19 +28,27 @@
 
 :root {
   --bar-transition: transform 0.2s ease, width 0.2s ease, opacity 1s ease;
-  --bar-height: clamp(26px, 5vh, 6vh);
+  --bar-height: clamp(26px, 4.9vh, 6vh);
   --timeline-transition: transform 0.2s ease;
 }
 
 html,
 body {
   overflow: hidden;
+  line-height: 1.15;
+
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   background: #000;
   color: #fff;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Geist", sans-serif;
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 400;
 }
 
 p {
@@ -55,8 +56,30 @@ p {
   font-weight: 400;
 }
 
+button {
+  position: relative;
+  cursor: pointer;
+}
+button:hover::after,
+button.active::after {
+  content: " ";
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+button * {
+  color: rgba(255, 255, 255, 0.8);
+}
+button:hover * {
+  color: #fff;
+}
+button.active * {
+  color: #fff;
+  font-weight: 600;
+}
+
 .drag-handle:hover::after {
-  content: " ⋮⋮";
+  content: " ";
   position: absolute;
   width: calc(100% - 14px);
   height: calc(100% - 14px);

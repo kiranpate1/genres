@@ -24,7 +24,7 @@ const Genres = ({}: props) => {
         const genreInfoArray = genreInfo(item.Genre);
         const bar = document.createElement("div");
         bar.setAttribute("data-genre", item.Genre);
-        bar.classList.add("bar", "absolute", "w-full");
+        bar.classList.add("bar", "absolute", "w-[0%]", "rounded-br-sm");
         bar.style.height = "var(--bar-height)";
         // bar.style.width = "0%";
         bar.style.transition = "var(--bar-transition)";

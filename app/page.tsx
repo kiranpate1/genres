@@ -22,6 +22,9 @@ export default function Home() {
   const currentWeekRef = useRef(0);
   const timeLengthRef = useRef(52);
   const isScrollingForwardRef = useRef(true);
+  const browseRef = useRef<(() => void) | null>(null);
+
+  const artistsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleHorizontalMouseMove = (e: MouseEvent) => {
@@ -102,6 +105,15 @@ export default function Home() {
     getDataFromAPI();
   }, []); // Empty dependency array - runs only once on mount
 
+  // Callback to handle time length changes from Timeline component
+  const handleTimeLengthChange = (weeks: number) => {
+    timeLengthRef.current = weeks;
+    // Call browse if it's available
+    if (browseRef.current) {
+      browseRef.current();
+    }
+  };
+
   // Process data whenever apiData or leftPercent changes
   useEffect(() => {
     if (!apiData) return;
@@ -117,70 +129,53 @@ export default function Home() {
       let songsCount: any[] = [];
 
       function findGenres() {
-        genreCount.length = 0;
-        artistCount.length = 0;
-        songsCount.length = 0;
         const week = Math.round(currentWeekRef.current);
+        const endWeek = week + timeLengthRef.current;
+        console.log("Finding genres from week", week, "to", endWeek);
 
-        const from = apiData[week].week;
-        const to = apiData[week + timeLengthRef.current - 1].week;
-        const timelineElement = document.querySelector(
-          ".timeline-element"
-        ) as HTMLDivElement;
-        console.log(week);
-        const yearsPassed = week / ((timeLengthRef.current * 52.2) / 52);
+        // Use Maps for O(1) lookups instead of findIndex
+        const genreMap = new Map<string, number>();
+        const artistMap = new Map<string, number>();
+        songsCount = [];
 
-        apiData.forEach((item: any, i: number) => {
-          if (i >= week && i < week + timeLengthRef.current) {
-            for (let n = 1; n <= 10; n++) {
-              const genreOccurrences = item[`no${n}genre`];
-              const artistOccurrences = item[`no${n}artist`];
-              const songOccurrences = item[`no${n}id`];
-              if (genreOccurrences) {
-                const existingIndex = genreCount.findIndex(
-                  (g) => g.genre === genreOccurrences
-                );
-                if (existingIndex !== -1) {
-                  genreCount[existingIndex].count++;
-                } else {
-                  genreCount.push({ genre: genreOccurrences, count: 1 });
-                }
-              }
-              if (artistOccurrences) {
-                // Split artist string by " ft. ", " / ", or ", "
-                const artists = artistOccurrences
-                  .split(/ ft\. | \/ |, /)
-                  .map((a: string) => a.trim())
-                  .filter((a: string) => a.length > 0);
+        // Only iterate through the relevant slice of data
+        for (let i = week; i < endWeek && i < apiData.length; i++) {
+          const item = apiData[i];
 
-                artists.forEach((artistName: string) => {
-                  const existingIndex = artistCount.findIndex(
-                    (g) => g.artist === artistName
-                  );
-                  if (existingIndex !== -1) {
-                    artistCount[existingIndex].count++;
-                  } else {
-                    artistCount.push({ artist: artistName, count: 1 });
-                  }
-                });
-              }
-              if (songOccurrences) {
-                // const existingSongIndex = songsCount.findIndex(
-                //   (s) => s.song === songOccurrences
-                // );
-                // if (existingSongIndex !== -1) {
-                //   songsCount[existingSongIndex].count++;
-                // } else {
-                //   songsCount.push({ song: songOccurrences, count: 1 });
-                // }
-              }
+          for (let n = 1; n <= 10; n++) {
+            const genreOccurrences = item[`no${n}genre`];
+            const artistOccurrences = item[`no${n}artist`];
+
+            if (genreOccurrences) {
+              genreMap.set(
+                genreOccurrences,
+                (genreMap.get(genreOccurrences) || 0) + 1
+              );
             }
-            songsCount.push(item[`no1id`]);
-          }
-        });
 
-        genreCount = genreCount.sort((a, b) => b.count - a.count);
-        artistCount = artistCount.sort((a, b) => b.count - a.count);
+            if (artistOccurrences) {
+              // Split artist string by " ft. ", " / ", or ", "
+              const artists = artistOccurrences
+                .split(/ ft\. | \/ |, /)
+                .map((a: string) => a.trim())
+                .filter((a: string) => a.length > 0);
+
+              artists.forEach((artistName: string) => {
+                artistMap.set(artistName, (artistMap.get(artistName) || 0) + 1);
+              });
+            }
+          }
+          songsCount.push(item[`no1id`]);
+        }
+
+        // Convert Maps to sorted arrays
+        genreCount = Array.from(genreMap.entries())
+          .map(([genre, count]) => ({ genre, count }))
+          .sort((a, b) => b.count - a.count);
+
+        artistCount = Array.from(artistMap.entries())
+          .map(([artist, count]) => ({ artist, count }))
+          .sort((a, b) => b.count - a.count);
 
         updateBars();
       }
@@ -189,33 +184,71 @@ export default function Home() {
         const bars = document.querySelectorAll(
           ".bar"
         ) as NodeListOf<HTMLDivElement>;
-        const maxCount = Math.max(...genreCount.map((g) => g.count));
-        const genreMapElements = document.querySelectorAll(
-          ".map-item"
+        const maxCount = genreCount.length > 0 ? genreCount[0].count : 1;
+        const artistsContainer = artistsRef.current as HTMLDivElement;
+        const artistElements = artistsContainer?.querySelectorAll(
+          ".artist"
         ) as NodeListOf<HTMLDivElement>;
-        const artistsContainer = document.querySelector(
-          ".artists"
-        ) as HTMLDivElement;
         const songElements = document.querySelectorAll(
           ".song"
         ) as NodeListOf<HTMLDivElement>;
 
+        // Create a Set for faster song lookups
+        const firstSongId = songsCount[0];
         songElements.forEach((songEl) => {
           const songId = songEl.getAttribute("id");
-          if (songsCount[0].includes(songId)) {
-            songEl.style.opacity = "1";
-          } else {
-            songEl.style.opacity = "0";
-          }
+          songEl.style.opacity =
+            firstSongId && firstSongId.includes(songId) ? "1" : "0";
         });
 
-        bars.forEach((bar: HTMLDivElement, index: number) => {
-          const genreOrder = genreCount
-            .map((g) => g.genre)
-            .indexOf(bar.dataset.genre);
+        // Create Maps for O(1) lookups
+        const genreOrderMap = new Map(genreCount.map((g, i) => [g.genre, i]));
+        const genreDataMap = new Map(genreCount.map((g) => [g.genre, g]));
+        const artistCountSet = new Set(artistCount.map((a) => a.artist));
+
+        // Update artists only if container exists
+        if (artistsContainer) {
+          artistCount.forEach((artist: { artist: string; count: number }) => {
+            const fontSize = 6 + artist.count * 0.9;
+            let artistElement = artistsContainer.querySelector(
+              `[data-artist="${artist.artist}"]`
+            ) as HTMLDivElement | null;
+
+            if (!artistElement) {
+              artistElement = document.createElement("div");
+              artistElement.classList.add("artist");
+              artistElement.style.whiteSpace = "nowrap";
+              artistElement.textContent = artist.artist;
+              artistElement.setAttribute("data-artist", artist.artist);
+              if (isScrollingForwardRef.current) {
+                artistsContainer.appendChild(artistElement);
+              } else {
+                artistsContainer.insertBefore(
+                  artistElement,
+                  artistsContainer.firstChild
+                );
+              }
+            }
+            artistElement.style.fontSize = `${fontSize}px`;
+            artistElement.style.margin = `${fontSize / -5}px 0`;
+          });
+
+          // Remove artists not in current list
+          artistElements?.forEach((artistEl) => {
+            const artistName = artistEl.dataset.artist;
+            if (artistName && !artistCountSet.has(artistName)) {
+              artistEl.remove();
+            }
+          });
+        }
+
+        // Update genre bars
+        bars.forEach((bar: HTMLDivElement) => {
           const genre = bar.dataset.genre as string;
-          const genreData = genreCount.find((g) => g.genre === genre);
-          if (genreData) {
+          const genreOrder = genreOrderMap.get(genre);
+          const genreData = genreDataMap.get(genre);
+
+          if (genreData && genreOrder !== undefined) {
             const widthPercentage = (genreData.count / maxCount) * 100;
             bar.style.width = `${widthPercentage}%`;
             bar.style.transform = `translateY(${genreOrder * 100}%)`;
@@ -238,21 +271,25 @@ export default function Home() {
               caption.style.justifyContent = "space-between";
               caption.style.color = genreInfo(genre)[1];
             }
+
+            const countCaption = bar.querySelector(
+              ".caption p:last-child"
+            ) as HTMLParagraphElement;
+            countCaption.textContent = String(genreData.count);
           } else {
             bar.style.width = `0%`;
             bar.style.transform = `translateY(${genreCount.length * 100}%)`;
             bar.style.zIndex = "0";
             bar.style.opacity = "0";
           }
-          const countCaption = bar.querySelector(
-            ".caption p:last-child"
-          ) as HTMLParagraphElement;
-          countCaption.textContent = genreData ? genreData.count : "0";
         });
       }
 
       findGenres();
     }
+
+    // Store browse in ref so it can be called from handleTimeLengthChange
+    browseRef.current = browse;
 
     const handleWheel = (event: WheelEvent) => {
       const deltaY = event.deltaY;
@@ -311,7 +348,14 @@ export default function Home() {
             style={{ height: `${bottomPercent}%` }}
             ref={bottomSide}
           >
-            <Timeline />
+            <Timeline
+              onTimeLengthChange={handleTimeLengthChange}
+              weekInfo={
+                apiData?.map((item: any) => ({
+                  date: item.date || item.week,
+                })) || []
+              }
+            />
           </div>
           <div
             className="absolute top-0 -right-2 bottom-0 w-4 cursor-col-resize z-10 drag-handle"
@@ -323,7 +367,7 @@ export default function Home() {
           style={{ width: `${rightPercent}%` }}
           ref={rightSide}
         >
-          <Artists />
+          <Artists ref={artistsRef} />
         </div>
       </div>
     </main>
