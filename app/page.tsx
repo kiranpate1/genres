@@ -181,6 +181,8 @@ export default function Home() {
           .sort((a, b) => b.count - a.count);
 
         updateBars();
+        updateArtists();
+        updateTimeline();
       }
 
       function updateBars() {
@@ -188,10 +190,6 @@ export default function Home() {
           ".bar"
         ) as NodeListOf<HTMLDivElement>;
         const maxCount = genreCount.length > 0 ? genreCount[0].count : 1;
-        const artistsContainer = artistsRef.current as HTMLDivElement;
-        const artistElements = artistsContainer?.querySelectorAll(
-          ".artist"
-        ) as NodeListOf<HTMLDivElement>;
         const songElements = document.querySelectorAll(
           ".song"
         ) as NodeListOf<HTMLDivElement>;
@@ -207,43 +205,6 @@ export default function Home() {
         // Create Maps for O(1) lookups
         const genreOrderMap = new Map(genreCount.map((g, i) => [g.genre, i]));
         const genreDataMap = new Map(genreCount.map((g) => [g.genre, g]));
-        const artistCountSet = new Set(artistCount.map((a) => a.artist));
-
-        // Update artists only if container exists
-        if (artistsContainer) {
-          artistCount.forEach((artist: { artist: string; count: number }) => {
-            const fontSize = 6 + artist.count * 0.9;
-            let artistElement = artistsContainer.querySelector(
-              `[data-artist="${artist.artist}"]`
-            ) as HTMLDivElement | null;
-
-            if (!artistElement) {
-              artistElement = document.createElement("div");
-              artistElement.classList.add("artist");
-              artistElement.style.whiteSpace = "nowrap";
-              artistElement.textContent = artist.artist;
-              artistElement.setAttribute("data-artist", artist.artist);
-              if (isScrollingForwardRef.current) {
-                artistsContainer.appendChild(artistElement);
-              } else {
-                artistsContainer.insertBefore(
-                  artistElement,
-                  artistsContainer.firstChild
-                );
-              }
-            }
-            artistElement.style.fontSize = `${fontSize}px`;
-            artistElement.style.margin = `${fontSize / -5}px 0`;
-          });
-
-          // Remove artists not in current list
-          artistElements?.forEach((artistEl) => {
-            const artistName = artistEl.dataset.artist;
-            if (artistName && !artistCountSet.has(artistName)) {
-              artistEl.remove();
-            }
-          });
-        }
 
         // Update genre bars
         bars.forEach((bar: HTMLDivElement) => {
@@ -286,8 +247,52 @@ export default function Home() {
             bar.style.opacity = "0";
           }
         });
+      }
 
-        updateTimeline();
+      function updateArtists() {
+        const artistsContainer = artistsRef.current as HTMLDivElement;
+        const artistElements = artistsContainer?.querySelectorAll(
+          ".artist"
+        ) as NodeListOf<HTMLDivElement>;
+        const artistCountSet = new Set(artistCount.map((a) => a.artist));
+        const timeLength = timeLengthRef.current;
+
+        // Update artists only if container exists
+        if (artistsContainer) {
+          artistCount.forEach((artist: { artist: string; count: number }) => {
+            const fontSizeFactor = 5.47198 * timeLength ** -0.425655;
+            const fontSize = 6 + artist.count * 0.9 * fontSizeFactor; // Adjust font size based on count and time length
+            let artistElement = artistsContainer.querySelector(
+              `[data-artist="${artist.artist}"]`
+            ) as HTMLDivElement | null;
+
+            if (!artistElement) {
+              artistElement = document.createElement("div");
+              artistElement.classList.add("artist");
+              artistElement.style.whiteSpace = "nowrap";
+              artistElement.textContent = artist.artist;
+              artistElement.setAttribute("data-artist", artist.artist);
+              if (isScrollingForwardRef.current) {
+                artistsContainer.appendChild(artistElement);
+              } else {
+                artistsContainer.insertBefore(
+                  artistElement,
+                  artistsContainer.firstChild
+                );
+              }
+            }
+            artistElement.style.fontSize = `${fontSize}px`;
+            artistElement.style.margin = `${fontSize / -5}px 0`;
+          });
+
+          // Remove artists not in current list
+          artistElements?.forEach((artistEl) => {
+            const artistName = artistEl.dataset.artist;
+            if (artistName && !artistCountSet.has(artistName)) {
+              artistEl.remove();
+            }
+          });
+        }
       }
 
       function updateTimeline() {
