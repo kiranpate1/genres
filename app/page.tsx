@@ -2,9 +2,10 @@
 
 import { useRef, useEffect, useState } from "react";
 import Genres from "./components/genres";
-import Timeline from "./components/timeline";
+import Timeline, { TimelineHandle } from "./components/timeline";
 import Artists from "./components/artists";
 import { genreMap } from "./components/genreMap";
+import { time } from "console";
 
 export default function Home() {
   const leftSide = useRef<HTMLDivElement>(null);
@@ -25,7 +26,9 @@ export default function Home() {
   const browseRef = useRef<(() => void) | null>(null);
 
   const artistsRef = useRef<HTMLDivElement>(null);
+  const timelineRef = useRef<TimelineHandle>(null);
 
+  //resize windows
   useEffect(() => {
     const handleHorizontalMouseMove = (e: MouseEvent) => {
       const totalWidth = window.innerWidth;
@@ -283,6 +286,68 @@ export default function Home() {
             bar.style.opacity = "0";
           }
         });
+
+        updateTimeline();
+      }
+
+      function updateTimeline() {
+        const totalWeeks = apiData.length;
+        const timeLength = timeLengthRef.current;
+        const timelineRatio = totalWeeks / timeLength;
+        const leftPercent =
+          (currentWeekRef.current / totalWeeks) * 100 * timelineRatio;
+
+        if (timelineRef.current?.timelineVisualization) {
+          const timelineElement = timelineRef.current.timelineVisualization;
+          if (timelineElement) {
+            timelineElement.style.width = `${timelineRatio * 100}%`;
+            timelineElement.style.left = `-${leftPercent}%`;
+          }
+        }
+
+        const months = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+
+        if (timelineRef.current?.fromLabel && timelineRef.current?.toLabel) {
+          const startWeek = Math.round(currentWeekRef.current);
+          const endWeek = Math.min(startWeek + timeLength, apiData.length - 1);
+
+          const fromDate = apiData[startWeek]?.date || apiData[startWeek]?.week;
+          const toDate = apiData[endWeek]?.date || apiData[endWeek]?.week;
+
+          const fromYear = timeLength > 52 ? `${fromDate.slice(0, 4)}` : "";
+          const fromMonth =
+            timeLength <= 260
+              ? `${months[parseInt(fromDate.slice(5, 7)) - 1]}`
+              : "";
+          const fromDay =
+            timeLength <= 52 ? `${parseInt(fromDate.slice(8, 10))}` : "";
+          const fromFormatted = `${fromMonth} ${fromDay} ${fromYear}`;
+
+          const toYear = timeLength > 52 ? `${toDate.slice(0, 4)}` : "";
+          const toMonth =
+            timeLength <= 260
+              ? `${months[parseInt(toDate.slice(5, 7)) - 1]}`
+              : "";
+          const toDay =
+            timeLength <= 52 ? `${parseInt(toDate.slice(8, 10))}` : "";
+          const toFormatted = `${toMonth} ${toDay} ${toYear}`;
+
+          timelineRef.current.fromLabel.textContent = fromFormatted || "";
+          timelineRef.current.toLabel.textContent = toFormatted || "";
+        }
       }
 
       findGenres();
@@ -293,9 +358,10 @@ export default function Home() {
 
     const handleWheel = (event: WheelEvent) => {
       const deltaY = event.deltaY;
+      const timeLength = timeLengthRef.current;
 
       // Amplify scroll sensitivity: much smaller step for slow scrolls, much larger for fast scrolls
-      let baseStep = 0.2;
+      let baseStep = timeLength / 200;
       let step = baseStep + Math.floor(Math.abs(deltaY) / 10);
       if (deltaY > 0) {
         currentWeekRef.current += step;
@@ -349,6 +415,7 @@ export default function Home() {
             ref={bottomSide}
           >
             <Timeline
+              ref={timelineRef}
               onTimeLengthChange={handleTimeLengthChange}
               weekInfo={
                 apiData?.map((item: any) => ({

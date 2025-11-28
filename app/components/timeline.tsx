@@ -1,4 +1,4 @@
-import { forwardRef, useRef, useEffect } from "react";
+import { forwardRef, useRef, useEffect, useImperativeHandle } from "react";
 
 type WeekInfo = {
   week: string;
@@ -10,7 +10,13 @@ type TimelineProps = {
   weekInfo: WeekInfo[];
 };
 
-const Timeline = forwardRef<HTMLDivElement, TimelineProps>(
+export type TimelineHandle = {
+  timelineVisualization: HTMLDivElement | null;
+  fromLabel: HTMLHeadingElement | null;
+  toLabel: HTMLHeadingElement | null;
+};
+
+const Timeline = forwardRef<TimelineHandle, TimelineProps>(
   ({ onTimeLengthChange, weekInfo }, ref) => {
     const week1Ref = useRef<HTMLButtonElement>(null);
     const month1Ref = useRef<HTMLButtonElement>(null);
@@ -21,6 +27,15 @@ const Timeline = forwardRef<HTMLDivElement, TimelineProps>(
     const year5Ref = useRef<HTMLButtonElement>(null);
     const year10Ref = useRef<HTMLButtonElement>(null);
     const timelineVisualizationRef = useRef<HTMLDivElement>(null);
+    const fromLabel = useRef<HTMLHeadingElement>(null);
+    const toLabel = useRef<HTMLHeadingElement>(null);
+
+    // Expose the timeline visualization ref to parent
+    useImperativeHandle(ref, () => ({
+      timelineVisualization: timelineVisualizationRef.current,
+      fromLabel: fromLabel.current,
+      toLabel: toLabel.current,
+    }));
 
     // Render timeline visualization once when weekInfo is available
     useEffect(() => {
@@ -64,17 +79,44 @@ const Timeline = forwardRef<HTMLDivElement, TimelineProps>(
         yearDiv.style.width = `${widthPercent}%`;
         yearDiv.innerHTML = `<div class="absolute top-3 left-3.5 text-[16px] text-[rgba(255,255,255,0.5)]">${currentYear}</div>`;
 
+        // Define months and days for the current year
+        const monthsOfYear = [
+          { month: "Jan", days: 31 },
+          { month: "Feb", days: currentYear % 4 === 0 ? 29 : 28 },
+          { month: "Mar", days: 31 },
+          { month: "Apr", days: 30 },
+          { month: "May", days: 31 },
+          { month: "Jun", days: 30 },
+          { month: "Jul", days: 31 },
+          { month: "Aug", days: 31 },
+          { month: "Sep", days: 30 },
+          { month: "Oct", days: 31 },
+          { month: "Nov", days: 30 },
+          { month: "Dec", days: 31 },
+        ];
+        const totalDaysInYear = monthsOfYear.reduce(
+          (sum, m) => sum + m.days,
+          0
+        );
+
         for (let j = 1; j <= 12; j++) {
           const monthDiv = document.createElement("div");
           monthDiv.className =
             "month absolute top-0 w-0 h-full overflow-hidden";
 
-          const monthLeftPercent = ((j - 1) / 12) * 100;
+          // Calculate the left position based on cumulative days of previous months
+          const months = monthsOfYear.slice(0, j - 1);
+          const daysBefore = months.reduce((sum, m) => sum + m.days, 0);
+          const monthLeftPercent = (daysBefore / totalDaysInYear) * 100;
           monthDiv.style.left = `${monthLeftPercent}%`;
-          monthDiv.style.width = `${100 / 12}%`; //adjust this and left to match actual amount of days in month
+          monthDiv.style.width = `${
+            (monthsOfYear[j - 1].days / totalDaysInYear) * 100
+          }%`; //adjust this and left to match actual amount of days in month
           monthDiv.style.borderRight =
             j === 12 ? "none" : "1px dashed rgba(255, 255, 255, 0.05)";
-          monthDiv.innerHTML = `<div class="absolute bottom-3 left-3.5 text-[16px] text-[rgba(255,255,255,0.3)]">${j}</div>`;
+          monthDiv.innerHTML = `<div class="absolute bottom-3 left-3.5 text-[16px] text-[rgba(255,255,255,0.3)]">${
+            monthsOfYear[j - 1].month
+          }</div>`;
 
           yearDiv.appendChild(monthDiv);
         }
@@ -132,7 +174,7 @@ const Timeline = forwardRef<HTMLDivElement, TimelineProps>(
     }, [onTimeLengthChange]);
 
     return (
-      <div className="w-full h-full p-1" ref={ref}>
+      <div className="w-full h-full p-1">
         <div className="relative w-full h-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.15)] rounded-lg overflow-hidden flex flex-col items-stretch">
           <div className="h-10 border-b border-[rgba(255,255,255,0.15)] flex items-stretch">
             <button
@@ -185,10 +227,14 @@ const Timeline = forwardRef<HTMLDivElement, TimelineProps>(
             </button>
           </div>
           <div className="relative w-full h-full">
-            <div
-              className="w-full h-full flex flex-col items-end flex-1 relative"
-              ref={timelineVisualizationRef}
-            ></div>
+            <div className="absolute top-0 left-1/2 min-w-[300px] w-[60%] max-w-[calc(100%-120px)] h-full transform -translate-x-1/2 border border-white rounded-lg">
+              <div
+                className="absolute w-full h-full flex flex-col items-end flex-1"
+                ref={timelineVisualizationRef}
+              ></div>
+              <h3 className="absolute top-3 left-3.5" ref={fromLabel}></h3>
+              <h3 className="absolute top-3 right-3.5" ref={toLabel}></h3>
+            </div>
           </div>
         </div>
       </div>
