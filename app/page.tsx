@@ -5,7 +5,6 @@ import Genres from "./components/genres";
 import Timeline, { TimelineHandle } from "./components/timeline";
 import Artists from "./components/artists";
 import { genreMap } from "./components/genreMap";
-import { time } from "console";
 
 export default function Home() {
   const leftSide = useRef<HTMLDivElement>(null);
@@ -22,11 +21,13 @@ export default function Home() {
   const [apiData, setApiData] = useState<any>(null);
   const currentWeekRef = useRef(0);
   const timeLengthRef = useRef(52);
+  const genreFiltersRef = useRef<string[]>([]);
   const isScrollingForwardRef = useRef(true);
   const browseRef = useRef<(() => void) | null>(null);
 
   const artistsRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<TimelineHandle>(null);
+  const genresRef = useRef<HTMLDivElement>(null);
 
   //resize windows
   useEffect(() => {
@@ -117,6 +118,23 @@ export default function Home() {
     }
   };
 
+  // Callback to handle genre click from Genres component
+  const handleGenreClick = (genreColor: string) => {
+    console.log("Genre clicked:", genreColor);
+
+    const prevFilters = genreFiltersRef.current;
+    if (prevFilters.includes(genreColor)) {
+      genreFiltersRef.current = prevFilters.filter(
+        (color) => color !== genreColor
+      );
+    } else {
+      genreFiltersRef.current = [...prevFilters, genreColor];
+    }
+    if (browseRef.current) {
+      browseRef.current();
+    }
+  };
+
   // Process data whenever apiData or leftPercent changes
   useEffect(() => {
     if (!apiData) return;
@@ -131,12 +149,17 @@ export default function Home() {
       let artistCount: any[] = [];
       let songsCount: any[] = [];
 
-      function findGenres() {
+      function filterData() {
         const week = Math.round(currentWeekRef.current);
         const endWeek = week + timeLengthRef.current;
-        console.log("Finding genres from week", week, "to", endWeek);
-
-        // Use Maps for O(1) lookups instead of findIndex
+        console.log(
+          "Finding from week",
+          week,
+          "to",
+          endWeek,
+          "with genres:",
+          genreFiltersRef.current
+        );
         const genreMap = new Map<string, number>();
         const artistMap = new Map<string, number>();
         songsCount = [];
@@ -147,6 +170,13 @@ export default function Home() {
 
           for (let n = 1; n <= 10; n++) {
             const genreOccurrences = item[`no${n}genre`];
+            if (
+              genreFiltersRef.current.length > 0 &&
+              genreOccurrences &&
+              !genreFiltersRef.current.includes(genreOccurrences)
+            ) {
+              continue;
+            }
             const artistOccurrences = item[`no${n}artist`];
 
             if (genreOccurrences) {
@@ -180,12 +210,13 @@ export default function Home() {
           .map(([artist, count]) => ({ artist, count }))
           .sort((a, b) => b.count - a.count);
 
-        updateBars();
+        updateGenres();
         updateArtists();
         updateTimeline();
       }
+      filterData();
 
-      function updateBars() {
+      function updateGenres() {
         const bars = document.querySelectorAll(
           ".bar"
         ) as NodeListOf<HTMLDivElement>;
@@ -211,13 +242,16 @@ export default function Home() {
           const genre = bar.dataset.genre as string;
           const genreOrder = genreOrderMap.get(genre);
           const genreData = genreDataMap.get(genre);
+          const barLabels = bar.querySelectorAll(
+            ".caption p"
+          ) as NodeListOf<HTMLParagraphElement>;
 
           if (genreData && genreOrder !== undefined) {
             const widthPercentage = (genreData.count / maxCount) * 100;
             bar.style.width = `${widthPercentage}%`;
             bar.style.transform = `translateY(${genreOrder * 100}%)`;
             bar.style.zIndex = `${genreCount.length - genreOrder}`;
-            bar.style.opacity = "1";
+            barLabels.forEach((label) => (label.style.opacity = "1"));
 
             const nameCaption = bar.querySelector(
               ".caption p:first-child"
@@ -226,7 +260,14 @@ export default function Home() {
             const barWidth =
               window.innerWidth * (leftPercent / 100) * (widthPercentage / 100);
             const caption = bar.querySelector(".caption") as HTMLDivElement;
-            if (nameWidth + 32 > barWidth) {
+            // If genreFiltersRef is not empty and genre is not present, set width to 0
+            if (
+              genreFiltersRef.current.length > 0 &&
+              !genreFiltersRef.current.includes(genre)
+            ) {
+              bar.style.width = "0%";
+              barLabels.forEach((label) => (label.style.opacity = "0"));
+            } else if (nameWidth + 32 > barWidth) {
               caption.style.transform = `translateX(calc(100% + 12px))`;
               caption.style.justifyContent = "flex-start";
               caption.style.color = "white";
@@ -244,7 +285,7 @@ export default function Home() {
             bar.style.width = `0%`;
             bar.style.transform = `translateY(${genreCount.length * 100}%)`;
             bar.style.zIndex = "0";
-            bar.style.opacity = "0";
+            barLabels.forEach((label) => (label.style.opacity = "0"));
           }
         });
       }
@@ -260,8 +301,8 @@ export default function Home() {
         // Update artists only if container exists
         if (artistsContainer) {
           artistCount.forEach((artist: { artist: string; count: number }) => {
-            const fontSizeFactor = 5.47198 * timeLength ** -0.425655;
-            const fontSize = 6 + artist.count * 0.9 * fontSizeFactor; // Adjust font size based on count and time length
+            const fontSizeFactor = 5.47198 * timeLength ** -0.425655; // Adjust font size based on count and time length
+            const fontSize = 6 + artist.count * 0.9 * fontSizeFactor;
             let artistElement = artistsContainer.querySelector(
               `[data-artist="${artist.artist}"]`
             ) as HTMLDivElement | null;
@@ -354,8 +395,6 @@ export default function Home() {
           timelineRef.current.toLabel.textContent = toFormatted || "";
         }
       }
-
-      findGenres();
     }
 
     // Store browse in ref so it can be called from handleTimeLengthChange
@@ -408,7 +447,7 @@ export default function Home() {
             style={{ height: `${topPercent}%` }}
             ref={topSide}
           >
-            <Genres />
+            <Genres onGenreClick={handleGenreClick} />
             <div
               className="absolute -bottom-2 left-0 right-0 h-4 cursor-row-resize z-10 drag-handle"
               ref={resizeVertical}

@@ -57,7 +57,6 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(
         const weeksInYear = weekInfo.filter((w) =>
           w.date.startsWith(currentYear.toString())
         ).length;
-        console.log(`Year: ${currentYear}, Weeks: ${weeksInYear}`);
 
         const yearDiv = document.createElement("div");
         yearDiv.className =
@@ -178,49 +177,49 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(
         <div className="relative w-full h-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.15)] rounded-lg overflow-hidden flex flex-col items-stretch">
           <div className="h-10 border-b border-[rgba(255,255,255,0.15)] flex items-stretch">
             <button
-              className="flex justify-center items-center px-3.5 border-r border-[rgba(255,255,255,0.15)]"
+              className="flex justify-center items-center px-2.5 border-r border-[rgba(255,255,255,0.15)]"
               ref={week1Ref}
             >
               <h3>1W</h3>
             </button>
             <button
-              className="flex justify-center items-center px-3.5 border-r border-[rgba(255,255,255,0.15)]"
+              className="flex justify-center items-center px-2.5 border-r border-[rgba(255,255,255,0.15)]"
               ref={month1Ref}
             >
               <h3>1M</h3>
             </button>
             <button
-              className="flex justify-center items-center px-3.5 border-r border-[rgba(255,255,255,0.15)]"
+              className="flex justify-center items-center px-2.5 border-r border-[rgba(255,255,255,0.15)]"
               ref={month3Ref}
             >
               <h3>3M</h3>
             </button>
             <button
-              className="flex justify-center items-center px-3.5 border-r border-[rgba(255,255,255,0.15)]"
+              className="flex justify-center items-center px-2.5 border-r border-[rgba(255,255,255,0.15)]"
               ref={month6Ref}
             >
               <h3>6M</h3>
             </button>
             <button
-              className="flex justify-center items-center px-3.5 border-r border-[rgba(255,255,255,0.15)] active"
+              className="flex justify-center items-center px-2.5 border-r border-[rgba(255,255,255,0.15)] active"
               ref={year1Ref}
             >
               <h3>1Y</h3>
             </button>
             <button
-              className="flex justify-center items-center px-3.5 border-r border-[rgba(255,255,255,0.15)]"
+              className="flex justify-center items-center px-2.5 border-r border-[rgba(255,255,255,0.15)]"
               ref={year2Ref}
             >
               <h3>2Y</h3>
             </button>
             <button
-              className="flex justify-center items-center px-3.5 border-r border-[rgba(255,255,255,0.15)]"
+              className="flex justify-center items-center px-2.5 border-r border-[rgba(255,255,255,0.15)]"
               ref={year5Ref}
             >
               <h3>5Y</h3>
             </button>
             <button
-              className="flex justify-center items-center px-3.5 border-r border-[rgba(255,255,255,0.15)]"
+              className="flex justify-center items-center px-2.5 border-r border-[rgba(255,255,255,0.15)]"
               ref={year10Ref}
             >
               <h3>10Y</h3>

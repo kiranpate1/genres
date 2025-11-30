@@ -21,7 +21,7 @@ export const genreMap = [
   ["#79c999", "Alternative", "black"],
   ["#8dea6c", "Folk rock", "black"],
   ["#baa912", "Soul", "black"],
-  ["#8f845a", "Blues", "black"],
+  ["#8f845a", "Blues", "white"],
   ["#e8f92d", "Jazz", "black"],
   ["#ddf3a8", "Soca", "black"],
   ["#be8f7a", "Gospel", "black"],
