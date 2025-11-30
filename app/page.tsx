@@ -22,12 +22,12 @@ export default function Home() {
   const currentWeekRef = useRef(0);
   const timeLengthRef = useRef(52);
   const genreFiltersRef = useRef<string[]>([]);
+  const [, forceUpdate] = useState({});
   const isScrollingForwardRef = useRef(true);
   const browseRef = useRef<(() => void) | null>(null);
 
   const artistsRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<TimelineHandle>(null);
-  const genresRef = useRef<HTMLDivElement>(null);
 
   //resize windows
   useEffect(() => {
@@ -107,12 +107,11 @@ export default function Home() {
     }
 
     getDataFromAPI();
-  }, []); // Empty dependency array - runs only once on mount
+  }, []);
 
   // Callback to handle time length changes from Timeline component
   const handleTimeLengthChange = (weeks: number) => {
     timeLengthRef.current = weeks;
-    // Call browse if it's available
     if (browseRef.current) {
       browseRef.current();
     }
@@ -120,8 +119,6 @@ export default function Home() {
 
   // Callback to handle genre click from Genres component
   const handleGenreClick = (genreColor: string) => {
-    console.log("Genre clicked:", genreColor);
-
     const prevFilters = genreFiltersRef.current;
     if (prevFilters.includes(genreColor)) {
       genreFiltersRef.current = prevFilters.filter(
@@ -130,10 +127,15 @@ export default function Home() {
     } else {
       genreFiltersRef.current = [...prevFilters, genreColor];
     }
+    forceUpdate({}); // Trigger re-render to update Genres component
     if (browseRef.current) {
       browseRef.current();
     }
   };
+
+  useEffect(() => {
+    console.log("Genre filters ref updated:", genreFiltersRef.current);
+  }, [genreFiltersRef.current]);
 
   // Process data whenever apiData or leftPercent changes
   useEffect(() => {
@@ -447,7 +449,10 @@ export default function Home() {
             style={{ height: `${topPercent}%` }}
             ref={topSide}
           >
-            <Genres onGenreClick={handleGenreClick} />
+            <Genres
+              onGenreClick={handleGenreClick}
+              activeGenres={genreFiltersRef.current}
+            />
             <div
               className="absolute -bottom-2 left-0 right-0 h-4 cursor-row-resize z-10 drag-handle"
               ref={resizeVertical}

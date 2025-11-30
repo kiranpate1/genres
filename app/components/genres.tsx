@@ -15,6 +15,7 @@ type Genre = {
 
 type props = {
   onGenreClick?: (genreColor: string) => void;
+  activeGenres?: string[];
 };
 
 export type GenresHandle = {
@@ -22,7 +23,7 @@ export type GenresHandle = {
 };
 
 const Genres = forwardRef<GenresHandle, props>(
-  ({ onGenreClick }: props, ref) => {
+  ({ onGenreClick, activeGenres = [] }: props, ref) => {
     const genresContainer = useRef<HTMLDivElement>(null);
     const genreListRef = useRef<HTMLDivElement>(null);
     const [genres, setGenres] = useState<Genre[]>([]);
@@ -91,10 +92,17 @@ const Genres = forwardRef<GenresHandle, props>(
               {genres.map((genre) => (
                 <div
                   key={genre.color}
-                  className="h-7 px-1.5 rounded-sm flex justify-center items-center cursor-pointer hover:opacity-80"
+                  className="h-7 px-1.5 rounded-sm flex justify-center items-center cursor-pointer hover:opacity-80 transition-opacity border"
                   style={{
-                    backgroundColor: genre.color,
-                    color: genre.textColor,
+                    backgroundColor: activeGenres.includes(genre.color)
+                      ? genre.color
+                      : "transparent",
+                    color: activeGenres.includes(genre.color)
+                      ? genre.textColor
+                      : "rgba(255,255,255,0.7)",
+                    borderColor: activeGenres.includes(genre.color)
+                      ? "transparent"
+                      : "rgba(255,255,255,0.15)",
                   }}
                   title={genre.color}
                   onClick={() => onGenreClick?.(genre.color)}
