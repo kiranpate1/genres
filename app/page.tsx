@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from "react";
 import Genres from "./components/genres";
 import Timeline, { TimelineHandle } from "./components/timeline";
+import Songs from "./components/songs";
 import Artists from "./components/artists";
 import { genreMap } from "./components/genreMap";
 
@@ -10,8 +11,8 @@ export default function Home() {
   const leftSide = useRef<HTMLDivElement>(null);
   const rightSide = useRef<HTMLDivElement>(null);
   const resizeHorizontal = useRef<HTMLDivElement>(null);
-  const [leftPercent, setLeftPercent] = useState(84);
-  const [rightPercent, setRightPercent] = useState(16);
+  const [leftPercent, setLeftPercent] = useState(68);
+  const [rightPercent, setRightPercent] = useState(32);
 
   const topSide = useRef<HTMLDivElement>(null);
   const bottomSide = useRef<HTMLDivElement>(null);
@@ -42,10 +43,12 @@ export default function Home() {
       }
     };
     const handleHorizontalMouseUp = () => {
+      document.body.style.userSelect = "auto";
       document.removeEventListener("mousemove", handleHorizontalMouseMove);
       document.removeEventListener("mouseup", handleHorizontalMouseUp);
     };
     const handleHorizontalMouseDown = () => {
+      document.body.style.userSelect = "none";
       document.addEventListener("mousemove", handleHorizontalMouseMove);
       document.addEventListener("mouseup", handleHorizontalMouseUp);
     };
@@ -61,10 +64,12 @@ export default function Home() {
       }
     };
     const handleVerticalMouseUp = () => {
+      document.body.style.userSelect = "auto";
       document.removeEventListener("mousemove", handleVerticalMouseMove);
       document.removeEventListener("mouseup", handleVerticalMouseUp);
     };
     const handleVerticalMouseDown = () => {
+      document.body.style.userSelect = "none";
       document.addEventListener("mousemove", handleVerticalMouseMove);
       document.addEventListener("mouseup", handleVerticalMouseUp);
     };
@@ -111,6 +116,20 @@ export default function Home() {
 
   // Callback to handle time length changes from Timeline component
   const handleTimeLengthChange = (weeks: number) => {
+    const timelineElement = timelineRef.current?.timelineVisualization;
+    if (timelineElement) {
+      timelineElement.style.transition = "left 0.3s, width 0.3s";
+      timelineElement.addEventListener(
+        "transitionend",
+        () => {
+          if (timelineElement) {
+            timelineElement.style.transition = "";
+          }
+        },
+        { once: true }
+      );
+    }
+
     timeLengthRef.current = weeks;
     if (browseRef.current) {
       browseRef.current();
@@ -163,7 +182,7 @@ export default function Home() {
           genreFiltersRef.current
         );
         const genreMap = new Map<string, number>();
-        const artistMap = new Map<string, number>();
+        const artistMap = new Map<string, { count: number; nSum: number }>();
         songsCount = [];
 
         // Only iterate through the relevant slice of data
@@ -195,8 +214,14 @@ export default function Home() {
                 .map((a: string) => a.trim())
                 .filter((a: string) => a.length > 0);
 
+              const weighted = 11 - n;
               artists.forEach((artistName: string) => {
-                artistMap.set(artistName, (artistMap.get(artistName) || 0) + 1);
+                // Get previous entry or initialize
+                const prev = artistMap.get(artistName) || { count: 0, nSum: 0 };
+                artistMap.set(artistName, {
+                  count: prev.count + 1,
+                  nSum: prev.nSum + weighted,
+                });
               });
             }
           }
@@ -209,7 +234,11 @@ export default function Home() {
           .sort((a, b) => b.count - a.count);
 
         artistCount = Array.from(artistMap.entries())
-          .map(([artist, count]) => ({ artist, count }))
+          .map(([artist, obj]) => ({
+            artist,
+            count: obj.count,
+            nSum: obj.nSum,
+          }))
           .sort((a, b) => b.count - a.count);
 
         updateGenres();
@@ -302,31 +331,34 @@ export default function Home() {
 
         // Update artists only if container exists
         if (artistsContainer) {
-          artistCount.forEach((artist: { artist: string; count: number }) => {
-            const fontSizeFactor = 5.47198 * timeLength ** -0.425655; // Adjust font size based on count and time length
-            const fontSize = 6 + artist.count * 0.9 * fontSizeFactor;
-            let artistElement = artistsContainer.querySelector(
-              `[data-artist="${artist.artist}"]`
-            ) as HTMLDivElement | null;
+          artistCount.forEach(
+            (artist: { artist: string; count: number; nSum: number }) => {
+              const fontSizeFactor = 5.47198 * timeLength ** -0.425655; // Adjust font size based on count and time length
+              const fontSize =
+                0.6 * fontSizeFactor + artist.nSum * 0.015 * fontSizeFactor;
+              let artistElement = artistsContainer.querySelector(
+                `[data-artist="${artist.artist}"]`
+              ) as HTMLDivElement | null;
 
-            if (!artistElement) {
-              artistElement = document.createElement("div");
-              artistElement.classList.add("artist");
-              artistElement.style.whiteSpace = "nowrap";
-              artistElement.textContent = artist.artist;
-              artistElement.setAttribute("data-artist", artist.artist);
-              if (isScrollingForwardRef.current) {
-                artistsContainer.appendChild(artistElement);
-              } else {
-                artistsContainer.insertBefore(
-                  artistElement,
-                  artistsContainer.firstChild
-                );
+              if (!artistElement) {
+                artistElement = document.createElement("div");
+                artistElement.classList.add("artist");
+                artistElement.style.whiteSpace = "nowrap";
+                artistElement.textContent = artist.artist;
+                artistElement.setAttribute("data-artist", artist.artist);
+                if (isScrollingForwardRef.current) {
+                  artistsContainer.appendChild(artistElement);
+                } else {
+                  artistsContainer.insertBefore(
+                    artistElement,
+                    artistsContainer.firstChild
+                  );
+                }
               }
+              artistElement.style.fontSize = `${fontSize}vh`;
+              artistElement.style.margin = `${fontSize / -5}vh 0`;
             }
-            artistElement.style.fontSize = `${fontSize}px`;
-            artistElement.style.margin = `${fontSize / -5}px 0`;
-          });
+          );
 
           // Remove artists not in current list
           artistElements?.forEach((artistEl) => {
@@ -430,9 +462,11 @@ export default function Home() {
 
     window.addEventListener("wheel", handleWheel);
     browse();
+    window.addEventListener("resize", browse);
 
     return () => {
       window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("resize", browse);
     };
   }, [apiData, leftPercent, rightPercent]);
 
@@ -440,50 +474,55 @@ export default function Home() {
     <main className="w-screen h-screen overflow-hidden p-1">
       <div className="relative w-full h-full">
         <div
-          className="absolute top-0 left-0 bottom-0"
-          style={{ width: `${leftPercent}%` }}
-          ref={leftSide}
+          className="absolute top-0 left-0 right-0"
+          style={{ height: `${topPercent}%` }}
+          ref={topSide}
         >
           <div
-            className="absolute top-0 left-0 right-0"
-            style={{ height: `${topPercent}%` }}
-            ref={topSide}
+            className="absolute top-0 bottom-0 left-0"
+            style={{ width: `${leftPercent}%` }}
+            ref={leftSide}
           >
             <Genres
               onGenreClick={handleGenreClick}
               activeGenres={genreFiltersRef.current}
             />
             <div
-              className="absolute -bottom-2 left-0 right-0 h-4 cursor-row-resize z-10 drag-handle"
-              ref={resizeVertical}
+              className="absolute top-0 -right-2 bottom-0 w-4 cursor-col-resize z-10 drag-handle"
+              ref={resizeHorizontal}
             ></div>
           </div>
           <div
-            className="absolute bottom-0 left-0 right-0"
-            style={{ height: `${bottomPercent}%` }}
-            ref={bottomSide}
+            className="absolute top-0 bottom-0 right-0 flex"
+            style={{ width: `${rightPercent}%` }}
+            ref={rightSide}
           >
-            <Timeline
-              ref={timelineRef}
-              onTimeLengthChange={handleTimeLengthChange}
-              weekInfo={
-                apiData?.map((item: any) => ({
-                  date: item.date || item.week,
-                })) || []
-              }
-            />
+            <div className="flex-1 h-full">
+              <Songs />
+            </div>
+            <div className="flex-1 h-full">
+              <Artists ref={artistsRef} />
+            </div>
           </div>
           <div
-            className="absolute top-0 -right-2 bottom-0 w-4 cursor-col-resize z-10 drag-handle"
-            ref={resizeHorizontal}
+            className="absolute -bottom-2 left-0 right-0 h-4 cursor-row-resize z-10 drag-handle"
+            ref={resizeVertical}
           ></div>
         </div>
         <div
-          className="absolute top-0 right-0 bottom-0"
-          style={{ width: `${rightPercent}%` }}
-          ref={rightSide}
+          className="absolute bottom-0 left-0 right-0"
+          style={{ height: `${bottomPercent}%` }}
+          ref={bottomSide}
         >
-          <Artists ref={artistsRef} />
+          <Timeline
+            ref={timelineRef}
+            onTimeLengthChange={handleTimeLengthChange}
+            weekInfo={
+              apiData?.map((item: any) => ({
+                date: item.date || item.week,
+              })) || []
+            }
+          />
         </div>
       </div>
     </main>

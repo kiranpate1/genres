@@ -87,12 +87,12 @@ const Genres = forwardRef<GenresHandle, props>(
       <div className="w-full h-full p-1">
         <div className="relative w-full h-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.15)] rounded-lg overflow-hidden">
           <div className="relative w-full h-full" ref={genresContainer}></div>
-          <div className="absolute right-2 bottom-2 border border-[rgba(255,255,255,0.15)] rounded-lg bg-[#0D0D0D] w-[400px] max-w-[calc(100%-1rem)] z-99">
+          <div className="absolute right-2 bottom-2 border border-[rgba(255,255,255,0.15)] rounded-lg bg-[#0D0D0D] w-[420px] max-w-[calc(100%-1rem)] z-99">
             <div className="flex flex-wrap gap-1.5 p-1.5" ref={genreListRef}>
               {genres.map((genre) => (
                 <div
                   key={genre.color}
-                  className="h-7 px-1.5 rounded-sm flex justify-center items-center cursor-pointer hover:opacity-80 transition-opacity border"
+                  className="relative h-7 px-1.5 rounded-sm overflow-hidden flex justify-center items-center cursor-pointer border hover:after:block after:bg-[rgba(255,255,255,0.15)] after:absolute after:inset-0 after:hidden"
                   style={{
                     backgroundColor: activeGenres.includes(genre.color)
                       ? genre.color
@@ -104,7 +104,7 @@ const Genres = forwardRef<GenresHandle, props>(
                       ? "transparent"
                       : "rgba(255,255,255,0.15)",
                   }}
-                  title={genre.color}
+                  data-genre={genre.color}
                   onClick={() => onGenreClick?.(genre.color)}
                 >
                   <h3>{genre.name}</h3>
