@@ -307,7 +307,10 @@ export default function Home() {
         }
 
         // Convert Maps to sorted arrays
-        songsCount.sort((a, b) => b.nSum - a.nSum);
+        const songsLimit = 50;
+        songsCount = songsCount
+          .sort((a, b) => b.nSum - a.nSum)
+          .slice(0, songsLimit);
         genreCount = Array.from(genreMap.entries())
           .map(([genre, count]) => ({ genre, count }))
           .sort((a, b) => b.count - a.count);
@@ -403,6 +406,7 @@ export default function Home() {
         // Update songs only if container exists
         if (songsContainer) {
           songElements?.forEach((songEl) => {
+            // if (songsCount.indexOf(songEl) >= 50) return; // Limit to top 50 songs
             const songName = songEl.dataset.song;
             if (songName && !songCountSet.has(songName)) {
               songEl.remove();
@@ -417,6 +421,7 @@ export default function Home() {
               title: string;
               artist: string;
             }) => {
+              // if (songsCount.indexOf(song) >= 50) return; // Limit to top 50 songs
               let songElement = songsContainer.querySelector(
                 `[data-song="${song.song}"]`
               ) as HTMLDivElement | null;
@@ -436,7 +441,15 @@ export default function Home() {
                   "overflow-hidden",
                   "duration-300"
                 );
-                songElement.innerHTML = `<div class="min-w-2 min-h-2 rounded-full" style="background-color: ${song.genre}"></div><p class="text-[rgba(255,255,255,1)] whitespace-nowrap overflow-hidden text-ellipsis">${song.title}</p><p class="flex-1 text-[rgba(255,255,255,0.5)] whitespace-nowrap overflow-hidden text-ellipsis">${song.artist}</p>`;
+                songElement.innerHTML = `<div>#${
+                  songsCount.indexOf(song) + 1
+                }</div><div class="min-w-2 min-h-2 rounded-full" style="background-color: ${
+                  song.genre
+                }"></div><p class="text-[rgba(255,255,255,1)] whitespace-nowrap overflow-hidden text-ellipsis">${
+                  song.title
+                }</p><p class="flex-1 text-[rgba(255,255,255,0.5)] whitespace-nowrap overflow-hidden text-ellipsis">${
+                  song.artist
+                }</p>`;
                 songElement.style.transform = `translateY(${
                   songsCount.indexOf(song) * 100
                 }%)`;
