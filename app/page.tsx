@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import Genres from "./components/genres";
+import Genres, { GenresHandle } from "./components/genres";
 import Timeline, { TimelineHandle } from "./components/timeline";
 import Songs from "./components/songs";
 import Artists from "./components/artists";
 import { genreMap } from "./components/genreMap";
+import { title } from "process";
 
 export default function Home() {
   const leftSide = useRef<HTMLDivElement>(null);
@@ -20,15 +21,19 @@ export default function Home() {
   const [topPercent, setTopPercent] = useState(80);
   const [bottomPercent, setBottomPercent] = useState(20);
   const [apiData, setApiData] = useState<any>(null);
+  const [songsData, setSongsData] = useState<any>(null);
   const currentWeekRef = useRef(0);
   const timeLengthRef = useRef(52);
   const genreFiltersRef = useRef<string[]>([]);
   const [, forceUpdate] = useState({});
   const isScrollingForwardRef = useRef(true);
   const browseRef = useRef<(() => void) | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
+  const songsRef = useRef<HTMLDivElement>(null);
   const artistsRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<TimelineHandle>(null);
+  const genresRef = useRef<GenresHandle>(null);
 
   //resize windows
   useEffect(() => {
@@ -114,6 +119,42 @@ export default function Home() {
     getDataFromAPI();
   }, []);
 
+  useEffect(() => {
+    async function getSongsFromAPI() {
+      const url =
+        "https://opensheet.elk.sh/1oxsWP57qoaxOZFUpPmwQ-Dkagv0o87qurp92_-VKITQ/allSongs";
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        setSongsData(data);
+      } catch (error) {
+        console.error("Error fetching songs data:", error);
+      }
+    }
+
+    getSongsFromAPI();
+  }, []);
+
+  // Add music video elements once when songsData loads
+  useEffect(() => {
+    if (!songsData || !genresRef.current?.musicVideoRef) return;
+
+    const musicvideoElement = genresRef.current.musicVideoRef;
+    // Clear existing videos first
+    musicvideoElement.innerHTML = "";
+
+    // Create a map for quick lookup instead of creating all DOM elements
+    const videoMap = new Map<string, string>();
+    songsData.forEach((item: any) => {
+      if (item.id && item.video) {
+        videoMap.set(item.id, item.video);
+      }
+    });
+
+    // Store the map on the element for later use
+    (musicvideoElement as any).videoMap = videoMap;
+  }, [songsData]);
+
   // Callback to handle time length changes from Timeline component
   const handleTimeLengthChange = (weeks: number) => {
     const timelineElement = timelineRef.current?.timelineVisualization;
@@ -152,10 +193,6 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-    console.log("Genre filters ref updated:", genreFiltersRef.current);
-  }, [genreFiltersRef.current]);
-
   // Process data whenever apiData or leftPercent changes
   useEffect(() => {
     if (!apiData) return;
@@ -165,10 +202,32 @@ export default function Home() {
       return [match ? match[1] : genre, match ? match[2] : "black"];
     }
 
+    function multiplier(year: string) {
+      if (year >= "1980" && year <= "1984") {
+        return 1.6;
+      } else if (year >= "1985" && year <= "1991") {
+        return 2;
+      } else if (year >= "1992" && year <= "2011") {
+        return 1;
+      } else if (year >= "2012" && year <= "2013") {
+        return 0.9;
+      } else if (year >= "2014" && year <= "2016") {
+        return 0.85;
+      } else if (year >= "2017" && year <= "2018") {
+        return 0.8;
+      } else if (year >= "2019" && year <= "2020") {
+        return 0.75;
+      } else if (year >= "2021" && year <= "2024") {
+        return 0.65;
+      } else if (year >= "2025") {
+        return 0.5;
+      }
+    }
+
     function browse() {
       let genreCount: any[] = [];
-      let artistCount: any[] = [];
       let songsCount: any[] = [];
+      let artistCount: any[] = [];
 
       function filterData() {
         const week = Math.round(currentWeekRef.current);
@@ -188,6 +247,8 @@ export default function Home() {
         // Only iterate through the relevant slice of data
         for (let i = week; i < endWeek && i < apiData.length; i++) {
           const item = apiData[i];
+          const year = item.week.slice(0, 4);
+          const multiplierValue = multiplier(year);
 
           for (let n = 1; n <= 10; n++) {
             const genreOccurrences = item[`no${n}genre`];
@@ -198,13 +259,31 @@ export default function Home() {
             ) {
               continue;
             }
+            const songOccurrences = item[`no${n}id`];
             const artistOccurrences = item[`no${n}artist`];
-
             if (genreOccurrences) {
               genreMap.set(
                 genreOccurrences,
                 (genreMap.get(genreOccurrences) || 0) + 1
               );
+            }
+
+            if (songOccurrences && multiplierValue) {
+              const weighted = (11 - n) * multiplierValue;
+              const prev = songsCount.find((s) => s.song === songOccurrences);
+              if (prev) {
+                prev.count += 1;
+                prev.nSum += weighted;
+              } else {
+                songsCount.push({
+                  song: songOccurrences,
+                  count: 1,
+                  nSum: weighted,
+                  title: item[`no${n}name`],
+                  artist: item[`no${n}artist`],
+                  genre: item[`no${n}genre`],
+                });
+              }
             }
 
             if (artistOccurrences) {
@@ -225,10 +304,10 @@ export default function Home() {
               });
             }
           }
-          songsCount.push(item[`no1id`]);
         }
 
         // Convert Maps to sorted arrays
+        songsCount.sort((a, b) => b.nSum - a.nSum);
         genreCount = Array.from(genreMap.entries())
           .map(([genre, count]) => ({ genre, count }))
           .sort((a, b) => b.count - a.count);
@@ -242,8 +321,10 @@ export default function Home() {
           .sort((a, b) => b.count - a.count);
 
         updateGenres();
+        updateSongs();
         updateArtists();
         updateTimeline();
+        updateMusicVideo();
       }
       filterData();
 
@@ -252,24 +333,15 @@ export default function Home() {
           ".bar"
         ) as NodeListOf<HTMLDivElement>;
         const maxCount = genreCount.length > 0 ? genreCount[0].count : 1;
-        const songElements = document.querySelectorAll(
-          ".song"
-        ) as NodeListOf<HTMLDivElement>;
-
-        // Create a Set for faster song lookups
-        const firstSongId = songsCount[0];
-        songElements.forEach((songEl) => {
-          const songId = songEl.getAttribute("id");
-          songEl.style.opacity =
-            firstSongId && firstSongId.includes(songId) ? "1" : "0";
-        });
 
         // Create Maps for O(1) lookups
         const genreOrderMap = new Map(genreCount.map((g, i) => [g.genre, i]));
         const genreDataMap = new Map(genreCount.map((g) => [g.genre, g]));
+        const leftPx = window.innerWidth * (leftPercent / 100);
 
-        // Update genre bars
-        bars.forEach((bar: HTMLDivElement) => {
+        // Update genre bars using for loop for better performance
+        for (let i = 0; i < bars.length; i++) {
+          const bar = bars[i];
           const genre = bar.dataset.genre as string;
           const genreOrder = genreOrderMap.get(genre);
           const genreData = genreDataMap.get(genre);
@@ -288,8 +360,7 @@ export default function Home() {
               ".caption p:first-child"
             ) as HTMLParagraphElement;
             const nameWidth = nameCaption.offsetWidth;
-            const barWidth =
-              window.innerWidth * (leftPercent / 100) * (widthPercentage / 100);
+            const barWidth = leftPx * (widthPercentage / 100);
             const caption = bar.querySelector(".caption") as HTMLDivElement;
             // If genreFiltersRef is not empty and genre is not present, set width to 0
             if (
@@ -318,7 +389,67 @@ export default function Home() {
             bar.style.zIndex = "0";
             barLabels.forEach((label) => (label.style.opacity = "0"));
           }
-        });
+        }
+      }
+
+      function updateSongs() {
+        const songsContainer = songsRef.current as HTMLDivElement;
+
+        const songElements = songsContainer?.querySelectorAll(
+          ".song"
+        ) as NodeListOf<HTMLDivElement>;
+        const songCountSet = new Set(songsCount.map((s) => s.song));
+
+        // Update songs only if container exists
+        if (songsContainer) {
+          songElements?.forEach((songEl) => {
+            const songName = songEl.dataset.song;
+            if (songName && !songCountSet.has(songName)) {
+              songEl.remove();
+            }
+          });
+          songsCount.forEach(
+            (song: {
+              song: string;
+              count: number;
+              nSum: number;
+              genre: string;
+              title: string;
+              artist: string;
+            }) => {
+              let songElement = songsContainer.querySelector(
+                `[data-song="${song.song}"]`
+              ) as HTMLDivElement | null;
+              if (!songElement) {
+                songElement = document.createElement("div");
+                songElement.classList.add(
+                  "song",
+                  "absolute",
+                  "left-0",
+                  "w-full",
+                  "h-5",
+                  "flex",
+                  "items-center",
+                  "gap-1.5",
+                  "px-1.5",
+                  "text-nowrap",
+                  "overflow-hidden",
+                  "duration-300"
+                );
+                songElement.innerHTML = `<div class="min-w-2 min-h-2 rounded-full" style="background-color: ${song.genre}"></div><p class="text-[rgba(255,255,255,1)] whitespace-nowrap overflow-hidden text-ellipsis">${song.title}</p><p class="flex-1 text-[rgba(255,255,255,0.5)] whitespace-nowrap overflow-hidden text-ellipsis">${song.artist}</p>`;
+                songElement.style.transform = `translateY(${
+                  songsCount.indexOf(song) * 100
+                }%)`;
+                songElement.setAttribute("data-song", song.song);
+                songsContainer.appendChild(songElement);
+              } else {
+                songElement.style.transform = `translateY(${
+                  songsCount.indexOf(song) * 100
+                }%)`;
+              }
+            }
+          );
+        }
       }
 
       function updateArtists() {
@@ -429,6 +560,32 @@ export default function Home() {
           timelineRef.current.toLabel.textContent = toFormatted || "";
         }
       }
+
+      function updateMusicVideo() {
+        const musicVideoContainer = genresRef.current?.musicVideoRef;
+        if (!musicVideoContainer || !(musicVideoContainer as any).videoMap)
+          return;
+
+        const videoMap = (musicVideoContainer as any).videoMap;
+        const week = Math.round(currentWeekRef.current);
+
+        // Get the #1 song from the current week
+        const currentWeekData = apiData[week];
+        if (currentWeekData && currentWeekData.no1id) {
+          const songId = currentWeekData.no1id;
+          const videoUrl = videoMap.get(songId);
+
+          if (videoUrl) {
+            // Clear and create new video element
+            musicVideoContainer.innerHTML = "";
+            const videoEl = document.createElement("div");
+            videoEl.className =
+              "music-video absolute inset-0 overflow-hidden bg-center bg-cover";
+            videoEl.style.backgroundImage = `url(${videoUrl})`;
+            musicVideoContainer.appendChild(videoEl);
+          }
+        }
+      }
     }
 
     // Store browse in ref so it can be called from handleTimeLengthChange
@@ -457,7 +614,14 @@ export default function Home() {
 
       isScrollingForwardRef.current = deltaY > 0;
 
-      browse();
+      // Cancel previous animation frame and schedule new one
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      animationFrameRef.current = requestAnimationFrame(() => {
+        browse();
+        animationFrameRef.current = null;
+      });
     };
 
     window.addEventListener("wheel", handleWheel);
@@ -486,6 +650,7 @@ export default function Home() {
             <Genres
               onGenreClick={handleGenreClick}
               activeGenres={genreFiltersRef.current}
+              ref={genresRef}
             />
             <div
               className="absolute top-0 -right-2 bottom-0 w-4 cursor-col-resize z-10 drag-handle"
@@ -497,10 +662,10 @@ export default function Home() {
             style={{ width: `${rightPercent}%` }}
             ref={rightSide}
           >
-            <div className="flex-1 h-full">
-              <Songs />
+            <div className="flex-1 h-full overflow-hidden">
+              <Songs ref={songsRef} />
             </div>
-            <div className="flex-1 h-full">
+            <div className="flex-1 h-full overflow-hidden">
               <Artists ref={artistsRef} />
             </div>
           </div>

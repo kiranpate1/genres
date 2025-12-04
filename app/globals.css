@@ -27,7 +27,7 @@
 } */
 
 :root {
-  --bar-transition: transform 0.2s ease, width 0.2s ease, opacity 1s ease;
+  --bar-transition: transform 0.2s ease, width 0s ease, opacity 1s ease;
   --bar-height: clamp(26px, 4.9vh, 6vh);
   --timeline-transition: transform 0.2s ease;
 }
