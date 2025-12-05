@@ -92,7 +92,7 @@ const Genres = forwardRef<GenresHandle, props>(
           <div className="relative w-full h-full" ref={genresContainer}></div>
           <div className="absolute right-2 bottom-2 w-[calc(100%-1rem)] flex justify-end items-end gap-2 z-99">
             <div
-              className="relative flex-1 max-w-80 h-50 border border-[rgba(255,255,255,0.15)] rounded-lg bg-[#0D0D0D]"
+              className="relative flex-1 max-w-80 h-54 border border-[rgba(255,255,255,0.15)] rounded-lg bg-[#0D0D0D] overflow-hidden"
               ref={musicVideoRef}
             ></div>
             <div className="border border-[rgba(255,255,255,0.15)] rounded-lg bg-[#0D0D0D] w-[420px]">

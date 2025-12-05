@@ -29,6 +29,7 @@ export default function Home() {
   const isScrollingForwardRef = useRef(true);
   const browseRef = useRef<(() => void) | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const videoIntervalRef = useRef<number | null>(null);
 
   const songsRef = useRef<HTMLDivElement>(null);
   const artistsRef = useRef<HTMLDivElement>(null);
@@ -196,6 +197,9 @@ export default function Home() {
   // Process data whenever apiData or leftPercent changes
   useEffect(() => {
     if (!apiData) return;
+    let genreCount: any[] = [];
+    let songsCount: any[] = [];
+    let artistCount: any[] = [];
 
     function genreInfo(genre: string) {
       const match = genreMap.find(([color, name]) => color === genre);
@@ -225,10 +229,6 @@ export default function Home() {
     }
 
     function browse() {
-      let genreCount: any[] = [];
-      let songsCount: any[] = [];
-      let artistCount: any[] = [];
-
       function filterData() {
         const week = Math.round(currentWeekRef.current);
         const endWeek = week + timeLengthRef.current;
@@ -441,15 +441,10 @@ export default function Home() {
                   "overflow-hidden",
                   "duration-300"
                 );
-                songElement.innerHTML = `<div>#${
-                  songsCount.indexOf(song) + 1
-                }</div><div class="min-w-2 min-h-2 rounded-full" style="background-color: ${
-                  song.genre
-                }"></div><p class="text-[rgba(255,255,255,1)] whitespace-nowrap overflow-hidden text-ellipsis">${
-                  song.title
-                }</p><p class="flex-1 text-[rgba(255,255,255,0.5)] whitespace-nowrap overflow-hidden text-ellipsis">${
-                  song.artist
-                }</p>`;
+                songElement.innerHTML = `
+                  <div class="min-w-2 min-h-2 rounded-full" style="background-color: ${song.genre}"></div>
+                  <p class="text-[rgba(255,255,255,1)] whitespace-nowrap overflow-hidden text-ellipsis">${song.title}</p>
+                  <p class="flex-1 text-[rgba(255,255,255,0.5)] whitespace-nowrap overflow-hidden text-ellipsis">${song.artist}</p>`;
                 songElement.style.transform = `translateY(${
                   songsCount.indexOf(song) * 100
                 }%)`;
@@ -578,26 +573,79 @@ export default function Home() {
         const musicVideoContainer = genresRef.current?.musicVideoRef;
         if (!musicVideoContainer || !(musicVideoContainer as any).videoMap)
           return;
+        const intervalDuration = 3000; // in milliseconds
+        const fadeDuration = 1000; // in milliseconds
+
+        // Clear previous interval if it exists
+        if (videoIntervalRef.current !== null) {
+          clearInterval(videoIntervalRef.current);
+          videoIntervalRef.current = null;
+        }
+
+        const randomTenSongs = Array.from(
+          { length: songsCount.length },
+          (_, i) => i
+        )
+          .sort(() => Math.random() - 0.5)
+          .slice(0, Math.min(10, songsCount.length));
+
+        console.log(randomTenSongs);
 
         const videoMap = (musicVideoContainer as any).videoMap;
-        const week = Math.round(currentWeekRef.current);
 
-        // Get the #1 song from the current week
-        const currentWeekData = apiData[week];
-        if (currentWeekData && currentWeekData.no1id) {
-          const songId = currentWeekData.no1id;
+        let currentIndex = 0;
+
+        // Function to show a video with crossfade
+        const showVideo = () => {
+          const songIndex = randomTenSongs[currentIndex];
+          const songId = songsCount[songIndex]?.song;
           const videoUrl = videoMap.get(songId);
+          const songInfo = [
+            songsCount[songIndex]?.genre,
+            songsCount[songIndex]?.title,
+            songsCount[songIndex]?.artist,
+          ];
 
           if (videoUrl) {
-            // Clear and create new video element
-            musicVideoContainer.innerHTML = "";
+            // Fade out previous video
+            const existingVideos =
+              musicVideoContainer.querySelectorAll(".music-video");
+            existingVideos.forEach((video) => {
+              (video as HTMLElement).style.opacity = "0";
+              // Remove after transition completes
+              setTimeout(() => video.remove(), fadeDuration);
+            });
+
+            // Create and fade in new video element
             const videoEl = document.createElement("div");
             videoEl.className =
-              "music-video absolute inset-0 overflow-hidden bg-center bg-cover";
-            videoEl.style.backgroundImage = `url(${videoUrl})`;
+              "music-video absolute inset-[-1px] flex flex-col items-stretch bg-black opacity-0 overflow-hidden";
+            videoEl.style.transition = `opacity ${fadeDuration}ms`;
+            videoEl.innerHTML = `
+              <div class="flex-1 bg-center bg-cover border border-[rgba(255,255,255,0.15)] rounded-lg overflow-hidden" style="background-image: url(${videoUrl})"></div>
+              <div class="h-6 flex items-center gap-1.5 px-2">
+                <div class="min-w-2 min-h-2 rounded-full" style="background-color: ${songInfo[0]}"></div>
+                <p class="text-[rgba(255,255,255,1)] whitespace-nowrap overflow-hidden text-ellipsis">${songInfo[1]}</p>
+                <p class="flex-1 text-[rgba(255,255,255,0.5)] whitespace-nowrap overflow-hidden text-ellipsis">${songInfo[2]}</p>
+              </div>`;
             musicVideoContainer.appendChild(videoEl);
+
+            // Trigger fade in after a brief delay to ensure transition works
+            setTimeout(() => {
+              videoEl.style.opacity = "1";
+            }, 10);
           }
-        }
+
+          currentIndex = (currentIndex + 1) % randomTenSongs.length;
+        };
+
+        // Show first video immediately
+        showVideo();
+
+        // Set up interval for subsequent videos
+        videoIntervalRef.current = window.setInterval(() => {
+          showVideo();
+        }, intervalDuration) as unknown as number;
       }
     }
 
