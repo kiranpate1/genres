@@ -5,15 +5,18 @@ import Genres, { GenresHandle } from "./components/genres";
 import Timeline, { TimelineHandle } from "./components/timeline";
 import Songs from "./components/songs";
 import Artists from "./components/artists";
-import { genreMap } from "./components/genreMap";
-import { title } from "process";
+import { genreMap } from "./utils/genreMap";
+import { multiplier, MONTHS } from "./utils/calculations";
 
 export default function Home() {
   const leftSide = useRef<HTMLDivElement>(null);
+  const middleSide = useRef<HTMLDivElement>(null);
   const rightSide = useRef<HTMLDivElement>(null);
-  const resizeHorizontal = useRef<HTMLDivElement>(null);
-  const [leftPercent, setLeftPercent] = useState(68);
-  const [rightPercent, setRightPercent] = useState(32);
+  const resizeLeftHorizontal = useRef<HTMLDivElement>(null);
+  const resizeRightHorizontal = useRef<HTMLDivElement>(null);
+  const [leftPercent, setLeftPercent] = useState(16);
+  const [middlePercent, setMiddlePercent] = useState(68);
+  const [rightPercent, setRightPercent] = useState(16);
 
   const topSide = useRef<HTMLDivElement>(null);
   const bottomSide = useRef<HTMLDivElement>(null);
@@ -38,25 +41,49 @@ export default function Home() {
 
   //resize windows
   useEffect(() => {
-    const handleHorizontalMouseMove = (e: MouseEvent) => {
+    // Left handle resizes left panel (artists)
+    const handleLeftMouseMove = (e: MouseEvent) => {
       const totalWidth = window.innerWidth;
       const newLeftPercent = (e.clientX / totalWidth) * 100;
-      const newRightPercent = 100 - newLeftPercent;
+      const newMiddlePercent = 100 - newLeftPercent - rightPercent;
 
-      if (newLeftPercent >= 50 && newRightPercent >= 10) {
+      if (newLeftPercent >= 10 && newMiddlePercent >= 10) {
         setLeftPercent(newLeftPercent);
-        setRightPercent(newRightPercent);
+        setMiddlePercent(newMiddlePercent);
       }
     };
-    const handleHorizontalMouseUp = () => {
+    const handleLeftMouseUp = () => {
       document.body.style.userSelect = "auto";
-      document.removeEventListener("mousemove", handleHorizontalMouseMove);
-      document.removeEventListener("mouseup", handleHorizontalMouseUp);
+      document.removeEventListener("mousemove", handleLeftMouseMove);
+      document.removeEventListener("mouseup", handleLeftMouseUp);
     };
-    const handleHorizontalMouseDown = () => {
+    const handleLeftMouseDown = () => {
       document.body.style.userSelect = "none";
-      document.addEventListener("mousemove", handleHorizontalMouseMove);
-      document.addEventListener("mouseup", handleHorizontalMouseUp);
+      document.addEventListener("mousemove", handleLeftMouseMove);
+      document.addEventListener("mouseup", handleLeftMouseUp);
+    };
+
+    // Right handle resizes right panel (songs)
+    const handleRightMouseMove = (e: MouseEvent) => {
+      const totalWidth = window.innerWidth;
+      const mouseX = (e.clientX / totalWidth) * 100;
+      const newRightPercent = 100 - mouseX;
+      const newMiddlePercent = 100 - leftPercent - newRightPercent;
+
+      if (newRightPercent >= 10 && newMiddlePercent >= 10) {
+        setRightPercent(newRightPercent);
+        setMiddlePercent(newMiddlePercent);
+      }
+    };
+    const handleRightMouseUp = () => {
+      document.body.style.userSelect = "auto";
+      document.removeEventListener("mousemove", handleRightMouseMove);
+      document.removeEventListener("mouseup", handleRightMouseUp);
+    };
+    const handleRightMouseDown = () => {
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", handleRightMouseMove);
+      document.addEventListener("mouseup", handleRightMouseUp);
     };
 
     const handleVerticalMouseMove = (e: MouseEvent) => {
@@ -80,22 +107,20 @@ export default function Home() {
       document.addEventListener("mouseup", handleVerticalMouseUp);
     };
 
-    const resizeHandleHorizontal = resizeHorizontal.current;
-    resizeHandleHorizontal?.addEventListener(
-      "mousedown",
-      handleHorizontalMouseDown
-    );
+    const resizeHandleLeft = resizeLeftHorizontal.current;
+    const resizeHandleRight = resizeRightHorizontal.current;
     const resizeHandleVertical = resizeVertical.current;
+
+    resizeHandleLeft?.addEventListener("mousedown", handleLeftMouseDown);
+    resizeHandleRight?.addEventListener("mousedown", handleRightMouseDown);
     resizeHandleVertical?.addEventListener(
       "mousedown",
       handleVerticalMouseDown
     );
 
     return () => {
-      resizeHandleHorizontal?.removeEventListener(
-        "mousedown",
-        handleHorizontalMouseDown
-      );
+      resizeHandleLeft?.removeEventListener("mousedown", handleLeftMouseDown);
+      resizeHandleRight?.removeEventListener("mousedown", handleRightMouseDown);
       resizeHandleVertical?.removeEventListener(
         "mousedown",
         handleVerticalMouseDown
@@ -204,28 +229,6 @@ export default function Home() {
     function genreInfo(genre: string) {
       const match = genreMap.find(([color, name]) => color === genre);
       return [match ? match[1] : genre, match ? match[2] : "black"];
-    }
-
-    function multiplier(year: string) {
-      if (year >= "1980" && year <= "1984") {
-        return 1.6;
-      } else if (year >= "1985" && year <= "1991") {
-        return 2;
-      } else if (year >= "1992" && year <= "2011") {
-        return 1;
-      } else if (year >= "2012" && year <= "2013") {
-        return 0.9;
-      } else if (year >= "2014" && year <= "2016") {
-        return 0.85;
-      } else if (year >= "2017" && year <= "2018") {
-        return 0.8;
-      } else if (year >= "2019" && year <= "2020") {
-        return 0.75;
-      } else if (year >= "2021" && year <= "2024") {
-        return 0.65;
-      } else if (year >= "2025") {
-        return 0.5;
-      }
     }
 
     function browse() {
@@ -365,6 +368,7 @@ export default function Home() {
             const nameWidth = nameCaption.offsetWidth;
             const barWidth = leftPx * (widthPercentage / 100);
             const caption = bar.querySelector(".caption") as HTMLDivElement;
+
             // If genreFiltersRef is not empty and genre is not present, set width to 0
             if (
               genreFiltersRef.current.length > 0 &&
@@ -474,7 +478,7 @@ export default function Home() {
             (artist: { artist: string; count: number; nSum: number }) => {
               const fontSizeFactor = 5.47198 * timeLength ** -0.425655; // Adjust font size based on count and time length
               const fontSize =
-                0.6 * fontSizeFactor + artist.nSum * 0.015 * fontSizeFactor;
+                0.6 * fontSizeFactor + artist.nSum * 0.01 * fontSizeFactor;
               let artistElement = artistsContainer.querySelector(
                 `[data-artist="${artist.artist}"]`
               ) as HTMLDivElement | null;
@@ -524,21 +528,6 @@ export default function Home() {
           }
         }
 
-        const months = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ];
-
         if (timelineRef.current?.fromLabel && timelineRef.current?.toLabel) {
           const startWeek = Math.round(currentWeekRef.current);
           const endWeek = Math.min(startWeek + timeLength, apiData.length - 1);
@@ -549,7 +538,7 @@ export default function Home() {
           const fromYear = timeLength > 52 ? `${fromDate.slice(0, 4)}` : "";
           const fromMonth =
             timeLength <= 260
-              ? `${months[parseInt(fromDate.slice(5, 7)) - 1]}`
+              ? `${MONTHS[parseInt(fromDate.slice(5, 7)) - 1].name}`
               : "";
           const fromDay =
             timeLength <= 52 ? `${parseInt(fromDate.slice(8, 10))}` : "";
@@ -558,7 +547,7 @@ export default function Home() {
           const toYear = timeLength > 52 ? `${toDate.slice(0, 4)}` : "";
           const toMonth =
             timeLength <= 260
-              ? `${months[parseInt(toDate.slice(5, 7)) - 1]}`
+              ? `${MONTHS[parseInt(toDate.slice(5, 7)) - 1].name}`
               : "";
           const toDay =
             timeLength <= 52 ? `${parseInt(toDate.slice(8, 10))}` : "";
@@ -622,7 +611,7 @@ export default function Home() {
               "music-video absolute inset-[-1px] flex flex-col items-stretch bg-black opacity-0 overflow-hidden";
             videoEl.style.transition = `opacity ${fadeDuration}ms`;
             videoEl.innerHTML = `
-              <div class="flex-1 bg-center bg-cover border border-[rgba(255,255,255,0.15)] rounded-lg overflow-hidden" style="background-image: url(${videoUrl})"></div>
+              <div class="flex-1 bg-center bg-cover border border-[rgba(255,255,255,0.15)] rounded-lg" style="background-image: url(${videoUrl})"></div>
               <div class="h-6 flex items-center gap-1.5 px-2">
                 <div class="min-w-2 min-h-2 rounded-full" style="background-color: ${songInfo[0]}"></div>
                 <p class="text-[rgba(255,255,255,1)] whitespace-nowrap overflow-hidden text-ellipsis">${songInfo[1]}</p>
@@ -693,7 +682,55 @@ export default function Home() {
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("resize", browse);
     };
-  }, [apiData, leftPercent, rightPercent]);
+  }, [apiData]);
+
+  // Handle horizontal resize - only update genre bars
+  useEffect(() => {
+    if (!apiData) return;
+
+    const updateGenrePositions = () => {
+      const bars = document.querySelectorAll(
+        ".bar"
+      ) as NodeListOf<HTMLDivElement>;
+      const leftPx = window.innerWidth * (leftPercent / 100);
+
+      bars.forEach((bar) => {
+        const caption = bar.querySelector(".caption") as HTMLDivElement;
+        const nameCaption = bar.querySelector(
+          ".caption p:first-child"
+        ) as HTMLParagraphElement;
+
+        if (!caption || !nameCaption) return;
+
+        const barWidth = parseFloat(bar.style.width) || 0;
+        const actualBarWidth = leftPx * (barWidth / 100);
+        const nameWidth = nameCaption.offsetWidth;
+        const genre = bar.dataset.genre as string;
+
+        function genreInfo(genre: string) {
+          const match = genreMap.find(([color, name]) => color === genre);
+          return [match ? match[1] : genre, match ? match[2] : "black"];
+        }
+
+        if (nameWidth + 32 > actualBarWidth) {
+          caption.style.transform = `translateX(calc(100% + 12px))`;
+          caption.style.justifyContent = "flex-start";
+          caption.style.color = "white";
+        } else {
+          caption.style.transform = `translateX(0px)`;
+          caption.style.justifyContent = "space-between";
+          caption.style.color = genreInfo(genre)[1];
+        }
+      });
+    };
+
+    updateGenrePositions();
+    window.addEventListener("resize", updateGenrePositions);
+
+    return () => {
+      window.removeEventListener("resize", updateGenrePositions);
+    };
+  }, [leftPercent, rightPercent, apiData]);
 
   return (
     <main className="w-screen h-screen overflow-hidden p-1">
@@ -703,10 +740,22 @@ export default function Home() {
           style={{ height: `${topPercent}%` }}
           ref={topSide}
         >
+          {/* Left panel - Artists */}
           <div
-            className="absolute top-0 bottom-0 left-0"
+            className="absolute top-0 bottom-0 left-0 flex"
             style={{ width: `${leftPercent}%` }}
             ref={leftSide}
+          >
+            <div className="flex-1 h-full overflow-hidden">
+              <Artists ref={artistsRef} />
+            </div>
+          </div>
+
+          {/* Middle panel - Genres */}
+          <div
+            className="absolute top-0 bottom-0"
+            style={{ left: `${leftPercent}%`, width: `${middlePercent}%` }}
+            ref={middleSide}
           >
             <Genres
               onGenreClick={handleGenreClick}
@@ -714,10 +763,16 @@ export default function Home() {
               ref={genresRef}
             />
             <div
+              className="absolute top-0 -left-2 bottom-0 w-4 cursor-col-resize z-10 drag-handle"
+              ref={resizeLeftHorizontal}
+            ></div>
+            <div
               className="absolute top-0 -right-2 bottom-0 w-4 cursor-col-resize z-10 drag-handle"
-              ref={resizeHorizontal}
+              ref={resizeRightHorizontal}
             ></div>
           </div>
+
+          {/* Right panel - Songs */}
           <div
             className="absolute top-0 bottom-0 right-0 flex"
             style={{ width: `${rightPercent}%` }}
@@ -726,10 +781,8 @@ export default function Home() {
             <div className="flex-1 h-full overflow-hidden">
               <Songs ref={songsRef} />
             </div>
-            <div className="flex-1 h-full overflow-hidden">
-              <Artists ref={artistsRef} />
-            </div>
           </div>
+
           <div
             className="absolute -bottom-2 left-0 right-0 h-4 cursor-row-resize z-10 drag-handle"
             ref={resizeVertical}

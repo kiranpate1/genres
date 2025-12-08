@@ -5,7 +5,7 @@ import {
   useImperativeHandle,
   useState,
 } from "react";
-import { genreMap } from "./genreMap";
+import { genreMap } from "../utils/genreMap";
 
 type Genre = {
   color: string;
@@ -96,7 +96,10 @@ const Genres = forwardRef<GenresHandle, props>(
               ref={musicVideoRef}
             ></div>
             <div className="border border-[rgba(255,255,255,0.15)] rounded-lg bg-[#0D0D0D] w-[420px]">
-              <div className="flex flex-wrap gap-1.5 p-1.5" ref={genreListRef}>
+              <div
+                className="flex justify-end flex-wrap gap-1.5 p-1.5"
+                ref={genreListRef}
+              >
                 {genres.map((genre) => (
                   <div
                     key={genre.color}

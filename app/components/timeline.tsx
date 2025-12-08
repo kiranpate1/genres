@@ -1,4 +1,5 @@
 import { forwardRef, useRef, useEffect, useImperativeHandle } from "react";
+import { MONTHS } from "../utils/calculations";
 
 type WeekInfo = {
   week: string;
@@ -79,20 +80,10 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(
         yearDiv.innerHTML = `<div class="absolute top-3 left-3.5 text-[16px] text-[rgba(255,255,255,0.5)]">${currentYear}</div>`;
 
         // Define months and days for the current year
-        const monthsOfYear = [
-          { month: "Jan", days: 31 },
-          { month: "Feb", days: currentYear % 4 === 0 ? 29 : 28 },
-          { month: "Mar", days: 31 },
-          { month: "Apr", days: 30 },
-          { month: "May", days: 31 },
-          { month: "Jun", days: 30 },
-          { month: "Jul", days: 31 },
-          { month: "Aug", days: 31 },
-          { month: "Sep", days: 30 },
-          { month: "Oct", days: 31 },
-          { month: "Nov", days: 30 },
-          { month: "Dec", days: 31 },
-        ];
+        const monthsOfYear = MONTHS.map((month, i) => ({
+          month: month.name,
+          days: i === 1 && currentYear % 4 === 0 ? month.days + 1 : month.days,
+        }));
         const totalDaysInYear = monthsOfYear.reduce(
           (sum, m) => sum + m.days,
           0

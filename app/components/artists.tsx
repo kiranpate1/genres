@@ -16,9 +16,16 @@ const Artists = forwardRef<HTMLDivElement, Props>((props, ref) => {
           </button>
         </div> */}
         <div
-          className="w-full h-full flex flex-col items-end flex-1 overflow-hidden"
+          className="w-full h-full flex flex-col items-start flex-1 overflow-hidden"
           ref={ref}
         ></div>
+        <div className="min-h-10 p-1">
+          <input
+            type="text"
+            placeholder="Search artists..."
+            className="w-full h-full px-2.5 text-sm border border-[rgba(255,255,255,0.15)] rounded-full outline-none focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.03)] placeholder:text-[rgba(255,255,255,0.4)]"
+          />
+        </div>
       </div>
     </div>
   );
