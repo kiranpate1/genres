@@ -16,7 +16,7 @@ const Artists = forwardRef<HTMLDivElement, Props>((props, ref) => {
           </button>
         </div> */}
         <div
-          className="w-full h-full flex flex-col items-start flex-1 overflow-hidden"
+          className="w-full h-full flex flex-col items-start flex-1 overflow-scroll"
           ref={ref}
         ></div>
         <div className="min-h-10 p-1">

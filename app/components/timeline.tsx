@@ -12,9 +12,11 @@ type TimelineProps = {
 };
 
 export type TimelineHandle = {
+  timelineScrollRef: HTMLDivElement | null;
   timelineVisualization: HTMLDivElement | null;
   fromLabel: HTMLHeadingElement | null;
   toLabel: HTMLHeadingElement | null;
+  timelineScrollBarRef: HTMLDivElement | null;
 };
 
 const Timeline = forwardRef<TimelineHandle, TimelineProps>(
@@ -27,15 +29,19 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(
     const year2Ref = useRef<HTMLButtonElement>(null);
     const year5Ref = useRef<HTMLButtonElement>(null);
     const year10Ref = useRef<HTMLButtonElement>(null);
+    const timelineScrollRef = useRef<HTMLDivElement>(null);
     const timelineVisualizationRef = useRef<HTMLDivElement>(null);
     const fromLabel = useRef<HTMLHeadingElement>(null);
     const toLabel = useRef<HTMLHeadingElement>(null);
+    const timelineScrollBarRef = useRef<HTMLDivElement>(null);
 
     // Expose the timeline visualization ref to parent
     useImperativeHandle(ref, () => ({
+      timelineScrollRef: timelineScrollRef.current,
       timelineVisualization: timelineVisualizationRef.current,
       fromLabel: fromLabel.current,
       toLabel: toLabel.current,
+      timelineScrollBarRef: timelineScrollBarRef.current,
     }));
 
     // Render timeline visualization once when weekInfo is available
@@ -216,7 +222,7 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(
               <h3>10Y</h3>
             </button>
           </div>
-          <div className="relative w-full h-full">
+          <div className="flex-1 relative w-full" ref={timelineScrollRef}>
             <div className="absolute top-0 left-1/2 min-w-[300px] w-[60%] max-w-[calc(100%-120px)] h-full transform -translate-x-1/2 border border-white rounded-lg">
               <div
                 className="absolute w-full h-full flex flex-col items-end flex-1"
@@ -225,6 +231,12 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(
               <h3 className="absolute top-3 left-3.5" ref={fromLabel}></h3>
               <h3 className="absolute top-3 right-3.5" ref={toLabel}></h3>
             </div>
+          </div>
+          <div className="relative w-full h-2 border-t border-[rgba(255,255,255,0.15)]">
+            <div
+              className="absolute h-full bg-[rgba(255,255,255,0.3)]"
+              ref={timelineScrollBarRef}
+            ></div>
           </div>
         </div>
       </div>

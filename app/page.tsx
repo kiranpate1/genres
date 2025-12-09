@@ -183,19 +183,24 @@ export default function Home() {
 
   // Callback to handle time length changes from Timeline component
   const handleTimeLengthChange = (weeks: number) => {
-    const timelineElement = timelineRef.current?.timelineVisualization;
-    if (timelineElement) {
-      timelineElement.style.transition = "left 0.3s, width 0.3s";
-      timelineElement.addEventListener(
+    const timelineElements = [
+      timelineRef.current?.timelineVisualization,
+      timelineRef.current?.timelineScrollBarRef,
+    ].filter(Boolean) as HTMLElement[];
+
+    timelineElements.forEach((element) => {
+      element.style.transition =
+        element === timelineElements[0]
+          ? "left 0.3s, width 0.3s"
+          : "width 0.3s";
+      element.addEventListener(
         "transitionend",
         () => {
-          if (timelineElement) {
-            timelineElement.style.transition = "";
-          }
+          element.style.transition = "";
         },
         { once: true }
       );
-    }
+    });
 
     timeLengthRef.current = weeks;
     if (browseRef.current) {
@@ -343,7 +348,7 @@ export default function Home() {
         // Create Maps for O(1) lookups
         const genreOrderMap = new Map(genreCount.map((g, i) => [g.genre, i]));
         const genreDataMap = new Map(genreCount.map((g) => [g.genre, g]));
-        const leftPx = window.innerWidth * (leftPercent / 100);
+        const middlePx = window.innerWidth * (middlePercent / 100);
 
         // Update genre bars using for loop for better performance
         for (let i = 0; i < bars.length; i++) {
@@ -366,7 +371,7 @@ export default function Home() {
               ".caption p:first-child"
             ) as HTMLParagraphElement;
             const nameWidth = nameCaption.offsetWidth;
-            const barWidth = leftPx * (widthPercentage / 100);
+            const barWidth = middlePx * (widthPercentage / 100);
             const caption = bar.querySelector(".caption") as HTMLDivElement;
 
             // If genreFiltersRef is not empty and genre is not present, set width to 0
@@ -522,9 +527,17 @@ export default function Home() {
 
         if (timelineRef.current?.timelineVisualization) {
           const timelineElement = timelineRef.current.timelineVisualization;
-          if (timelineElement) {
+          const timelineScrollBarElement =
+            timelineRef.current.timelineScrollBarRef;
+          if (timelineElement && timelineScrollBarElement) {
             timelineElement.style.width = `${timelineRatio * 100}%`;
             timelineElement.style.left = `-${leftPercent}%`;
+            timelineScrollBarElement.style.width = `${
+              (timeLength / totalWeeks) * 100
+            }%`;
+            timelineScrollBarElement.style.left = `${
+              (currentWeekRef.current / totalWeeks) * 100
+            }%`;
           }
         }
 
@@ -577,8 +590,6 @@ export default function Home() {
         )
           .sort(() => Math.random() - 0.5)
           .slice(0, Math.min(10, songsCount.length));
-
-        console.log(randomTenSongs);
 
         const videoMap = (musicVideoContainer as any).videoMap;
 
@@ -673,13 +684,14 @@ export default function Home() {
         animationFrameRef.current = null;
       });
     };
+    const timelineScrollRef = timelineRef.current?.timelineScrollRef;
 
-    window.addEventListener("wheel", handleWheel);
+    timelineScrollRef?.addEventListener("wheel", handleWheel);
     browse();
     window.addEventListener("resize", browse);
 
     return () => {
-      window.removeEventListener("wheel", handleWheel);
+      timelineScrollRef?.removeEventListener("wheel", handleWheel);
       window.removeEventListener("resize", browse);
     };
   }, [apiData]);
@@ -692,7 +704,7 @@ export default function Home() {
       const bars = document.querySelectorAll(
         ".bar"
       ) as NodeListOf<HTMLDivElement>;
-      const leftPx = window.innerWidth * (leftPercent / 100);
+      const middlePx = window.innerWidth * (middlePercent / 100);
 
       bars.forEach((bar) => {
         const caption = bar.querySelector(".caption") as HTMLDivElement;
@@ -703,7 +715,7 @@ export default function Home() {
         if (!caption || !nameCaption) return;
 
         const barWidth = parseFloat(bar.style.width) || 0;
-        const actualBarWidth = leftPx * (barWidth / 100);
+        const actualBarWidth = middlePx * (barWidth / 100);
         const nameWidth = nameCaption.offsetWidth;
         const genre = bar.dataset.genre as string;
 
