@@ -4,7 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import Genres, { GenresHandle } from "./components/genres";
 import Timeline, { TimelineHandle } from "./components/timeline";
 import Songs from "./components/songs";
-import Artists from "./components/artists";
+import Artists, { ArtistsHandle } from "./components/artists";
 import { genreMap } from "./utils/genreMap";
 import { multiplier, MONTHS } from "./utils/calculations";
 
@@ -33,9 +33,13 @@ export default function Home() {
   const browseRef = useRef<(() => void) | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const videoIntervalRef = useRef<number | null>(null);
+  const artistCountRef = useRef<
+    { artist: string; count: number; nSum: number }[]
+  >([]);
+  const allArtistsRef = useRef<string[]>([]);
 
   const songsRef = useRef<HTMLDivElement>(null);
-  const artistsRef = useRef<HTMLDivElement>(null);
+  const artistsRef = useRef<ArtistsHandle>(null);
   const timelineRef = useRef<TimelineHandle>(null);
   const genresRef = useRef<GenresHandle>(null);
 
@@ -181,6 +185,34 @@ export default function Home() {
     (musicvideoElement as any).videoMap = videoMap;
   }, [songsData]);
 
+  // Build comprehensive artist list once when apiData loads
+  useEffect(() => {
+    if (!apiData) return;
+
+    const artistSet = new Set<string>();
+    const splitArtists = (artistOccurrences: string) => {
+      return artistOccurrences
+        .split(/ ft\. | \/ |, /)
+        .map((a: string) => a.trim())
+        .filter((a: string) => a.length > 0);
+    };
+
+    // Iterate through all data to collect unique artists
+    apiData.forEach((item: any) => {
+      for (let n = 1; n <= 10; n++) {
+        const artistOccurrences = item[`no${n}artist`];
+        if (artistOccurrences) {
+          const artists = splitArtists(artistOccurrences);
+          artists.forEach((artist) => artistSet.add(artist));
+        }
+      }
+    });
+
+    // Convert to sorted array for better UX
+    allArtistsRef.current = Array.from(artistSet).sort();
+    console.log(`Loaded ${allArtistsRef.current.length} unique artists from dataset`);
+  }, [apiData]);
+
   // Callback to handle time length changes from Timeline component
   const handleTimeLengthChange = (weeks: number) => {
     const timelineElements = [
@@ -231,11 +263,19 @@ export default function Home() {
     let songsCount: any[] = [];
     let artistCount: any[] = [];
 
-    function genreInfo(genre: string) {
+    // local helper functions
+    const genreInfo = (genre: string) => {
       const match = genreMap.find(([color, name]) => color === genre);
       return [match ? match[1] : genre, match ? match[2] : "black"];
-    }
+    };
+    const splitArtists = (artistOccurrences: string) => {
+      return artistOccurrences
+        .split(/ ft\. | \/ |, /)
+        .map((a: string) => a.trim())
+        .filter((a: string) => a.length > 0);
+    };
 
+    // main browse
     function browse() {
       function filterData() {
         const week = Math.round(currentWeekRef.current);
@@ -296,10 +336,7 @@ export default function Home() {
 
             if (artistOccurrences) {
               // Split artist string by " ft. ", " / ", or ", "
-              const artists = artistOccurrences
-                .split(/ ft\. | \/ |, /)
-                .map((a: string) => a.trim())
-                .filter((a: string) => a.length > 0);
+              const artists = splitArtists(artistOccurrences);
 
               const weighted = 11 - n;
               artists.forEach((artistName: string) => {
@@ -330,6 +367,9 @@ export default function Home() {
             nSum: obj.nSum,
           }))
           .sort((a, b) => b.count - a.count);
+
+        // Store in ref for search functionality
+        artistCountRef.current = artistCount;
 
         updateGenres();
         updateSongs();
@@ -470,7 +510,7 @@ export default function Home() {
       }
 
       function updateArtists() {
-        const artistsContainer = artistsRef.current as HTMLDivElement;
+        const artistsContainer = artistsRef.current?.artistsList;
         const artistElements = artistsContainer?.querySelectorAll(
           ".artist"
         ) as NodeListOf<HTMLDivElement>;
@@ -686,11 +726,29 @@ export default function Home() {
     };
     const timelineScrollRef = timelineRef.current?.timelineScrollRef;
 
+    // Set up artist search handler once
+    const artistsSearch = artistsRef.current?.artistsSearchRef;
+    const handleArtistSearch = () => {
+      if (!artistsSearch) return;
+      const inputValue = artistsSearch.value.toLowerCase();
+      if (inputValue.length >= 3) {
+        const matchingArtists = allArtistsRef.current.filter((artist) =>
+          artist.toLowerCase().includes(inputValue)
+        );
+        console.log(`Found ${matchingArtists.length} matching artists:`, matchingArtists);
+      } else {
+        console.log("Type at least 3 characters to search");
+      }
+    };
+
+    artistsSearch?.addEventListener("input", handleArtistSearch);
     timelineScrollRef?.addEventListener("wheel", handleWheel);
     browse();
     window.addEventListener("resize", browse);
 
     return () => {
+      const artistsSearch = artistsRef.current?.artistsSearchRef;
+      artistsSearch?.removeEventListener("input", handleArtistSearch);
       timelineScrollRef?.removeEventListener("wheel", handleWheel);
       window.removeEventListener("resize", browse);
     };
