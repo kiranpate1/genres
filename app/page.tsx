@@ -210,7 +210,9 @@ export default function Home() {
 
     // Convert to sorted array for better UX
     allArtistsRef.current = Array.from(artistSet).sort();
-    console.log(`Loaded ${allArtistsRef.current.length} unique artists from dataset`);
+    console.log(
+      `Loaded ${allArtistsRef.current.length} unique artists from dataset`
+    );
   }, [apiData]);
 
   // Callback to handle time length changes from Timeline component
@@ -735,7 +737,10 @@ export default function Home() {
         const matchingArtists = allArtistsRef.current.filter((artist) =>
           artist.toLowerCase().includes(inputValue)
         );
-        console.log(`Found ${matchingArtists.length} matching artists:`, matchingArtists);
+        console.log(
+          `Found ${matchingArtists.length} matching artists:`,
+          matchingArtists
+        );
       } else {
         console.log("Type at least 3 characters to search");
       }
