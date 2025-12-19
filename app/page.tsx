@@ -37,6 +37,7 @@ export default function Home() {
     { artist: string; count: number; nSum: number }[]
   >([]);
   const allArtistsRef = useRef<string[]>([]);
+  const searchDebounceRef = useRef<number | null>(null);
 
   const songsRef = useRef<HTMLDivElement>(null);
   const artistsRef = useRef<ArtistsHandle>(null);
@@ -728,22 +729,62 @@ export default function Home() {
     };
     const timelineScrollRef = timelineRef.current?.timelineScrollRef;
 
-    // Set up artist search handler once
+    // Set up artist search handler with debouncing
     const artistsSearch = artistsRef.current?.artistsSearchRef;
+    const artistsSearchResults = artistsRef.current?.artistsSearchResults;
+
     const handleArtistSearch = () => {
-      if (!artistsSearch) return;
-      const inputValue = artistsSearch.value.toLowerCase();
-      if (inputValue.length >= 3) {
-        const matchingArtists = allArtistsRef.current.filter((artist) =>
-          artist.toLowerCase().includes(inputValue)
-        );
-        console.log(
-          `Found ${matchingArtists.length} matching artists:`,
-          matchingArtists
-        );
-      } else {
-        console.log("Type at least 3 characters to search");
+      if (!artistsSearch || !artistsSearchResults) return;
+
+      // Clear previous debounce timer
+      if (searchDebounceRef.current !== null) {
+        clearTimeout(searchDebounceRef.current);
       }
+
+      // Debounce search by 200ms
+      searchDebounceRef.current = window.setTimeout(() => {
+        const inputValue = artistsSearch.value.trim();
+
+        if (inputValue.length === 0) {
+          // Hide results when input is empty
+          artistsSearchResults.classList.add("hidden");
+          artistsSearchResults.innerHTML = "";
+          return;
+        }
+
+        if (inputValue.length < 3) {
+          // Show hint message
+          artistsSearchResults.classList.remove("hidden");
+          artistsSearchResults.innerHTML = `<div class="px-3 py-2 text-xs text-[rgba(255,255,255,0.5)]">Type at least 3 characters...</div>`;
+          return;
+        }
+
+        // Filter artists (limit to 50 results for performance)
+        const matchingArtists = allArtistsRef.current
+          .filter((artist) =>
+            artist.toLowerCase().includes(inputValue.toLowerCase())
+          )
+          .slice(0, 50);
+
+        if (matchingArtists.length === 0) {
+          artistsSearchResults.classList.remove("hidden");
+          artistsSearchResults.innerHTML = `<div class="px-3 py-2 text-xs text-[rgba(255,255,255,0.5)]">No artists found</div>`;
+          return;
+        }
+
+        // Use innerHTML for fast bulk update
+        artistsSearchResults.innerHTML = matchingArtists
+          .map(
+            (artist) =>
+              `<div class="px-3 py-1.5 text-sm hover:bg-[rgba(255,255,255,0.1)] cursor-pointer transition-colors">${artist}</div>`
+          )
+          .join("");
+        artistsSearchResults.classList.remove("hidden");
+
+        console.log(
+          `Found ${matchingArtists.length} matching artists (showing 50 max)`
+        );
+      }, 200);
     };
 
     artistsSearch?.addEventListener("input", handleArtistSearch);
@@ -753,6 +794,9 @@ export default function Home() {
 
     return () => {
       const artistsSearch = artistsRef.current?.artistsSearchRef;
+      if (searchDebounceRef.current !== null) {
+        clearTimeout(searchDebounceRef.current);
+      }
       artistsSearch?.removeEventListener("input", handleArtistSearch);
       timelineScrollRef?.removeEventListener("wheel", handleWheel);
       window.removeEventListener("resize", browse);
