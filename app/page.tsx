@@ -6,7 +6,7 @@ import Timeline, { TimelineHandle } from "./components/timeline";
 import Songs from "./components/songs";
 import Artists, { ArtistsHandle } from "./components/artists";
 import { genreMap } from "./utils/genreMap";
-import { multiplier, MONTHS } from "./utils/calculations";
+import { multiplier, MONTHS, positionScore } from "./utils/calculations";
 
 export default function Home() {
   const leftSide = useRef<HTMLDivElement>(null);
@@ -269,7 +269,7 @@ export default function Home() {
     // local helper functions
     const genreInfo = (genre: string) => {
       const match = genreMap.find(([color, name]) => color === genre);
-      return [match ? match[1] : genre, match ? match[2] : "black"];
+      return [match ? match[1] : genre, match ? match[3] : "black"];
     };
     const splitArtists = (artistOccurrences: string) => {
       return artistOccurrences
@@ -320,7 +320,7 @@ export default function Home() {
             }
 
             if (songOccurrences && multiplierValue) {
-              const weighted = (11 - n) * multiplierValue;
+              const weighted = positionScore(n + 1) * multiplierValue;
               const prev = songsCount.find((s) => s.song === songOccurrences);
               if (prev) {
                 prev.count += 1;
@@ -341,7 +341,7 @@ export default function Home() {
               // Split artist string by " ft. ", " / ", or ", "
               const artists = splitArtists(artistOccurrences);
 
-              const weighted = 11 - n;
+              const weighted = positionScore(n + 1) * multiplierValue;
               artists.forEach((artistName: string) => {
                 // Get previous entry or initialize
                 const prev = artistMap.get(artistName) || { count: 0, nSum: 0 };
@@ -828,7 +828,7 @@ export default function Home() {
 
         function genreInfo(genre: string) {
           const match = genreMap.find(([color, name]) => color === genre);
-          return [match ? match[1] : genre, match ? match[2] : "black"];
+          return [match ? match[1] : genre, match ? match[3] : "black"];
         }
 
         if (nameWidth + 32 > actualBarWidth) {

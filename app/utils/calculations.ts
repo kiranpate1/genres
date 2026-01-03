@@ -1,3 +1,28 @@
+export function positionScore(position: number): number {
+  if (position === 1) {
+    return 7.5;
+  } else if (position === 2) {
+    return 6;
+  } else if (position === 3) {
+    return 4.95;
+  } else if (position === 4) {
+    return 4.35;
+  } else if (position === 5) {
+    return 3.9;
+  } else if (position === 6) {
+    return 3.6;
+  } else if (position === 7) {
+    return 3.45;
+  } else if (position === 8) {
+    return 3.3;
+  } else if (position === 9) {
+    return 3.15;
+  } else if (position === 10) {
+    return 3;
+  }
+  return 0; // default fallback
+}
+
 export function multiplier(year: string): number {
   if (year >= "1980" && year <= "1984") {
     return 1.6;
